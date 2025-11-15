@@ -1,0 +1,844 @@
+{
+  "status": "OK",
+  "result": {
+    "paging": {
+      "nextPageToken": "eyJsYXN0Q29tcGxleElkIjp7InVwZGF0ZWRBdCI6MTY2MTUzMTg1MzA2NSwicGFydG5lcklkIjo2MTkyOTYsIm9yZGVySWQiOjEyNzg0MDE4NSwiY2hlY2tvdXRlclJldHVybklkIjpudWxsLCJsb2dpc3RpY1JldHVybklkIjoxMTUwMDY4fSwic29ydE9yZGVyIjoiREVTQyJ9"
+    },
+    "returns": [
+      {
+        "id": 11170673,
+        "orderId": 154780671,
+        "creationDate": "2022-11-20T21:01:33.848+03:00",
+        "updateDate": "2022-11-20T21:01:33.848+03:00",
+        "shipmentRecipientType": "SHOP",
+        "shipmentStatus": "IN_TRANSIT",
+        "refundAmount": 461500,
+        "amount": {
+          "value": 4615.0,
+          "currencyId": "RUR"
+        },
+        "items": [
+          {
+            "marketSku": 101768043357,
+            "shopSku": "Komod92",
+            "count": 1,
+            "instances": [
+              {
+                "status": "IN_TRANSIT"
+              }
+            ],
+            "tracks": [
+              {
+                "trackCode": "P000776440"
+              },
+              {
+                "trackCode": "P000776447"
+              }
+            ]
+          }
+        ],
+        "returnType": "UNREDEEMED"
+      },
+      {
+        "id": 10904565,
+        "orderId": 150429105,
+        "creationDate": "2022-11-12T17:51:56.503+03:00",
+        "updateDate": "2022-11-18T21:07:44.463+03:00",
+        "shipmentRecipientType": "SHOP",
+        "shipmentStatus": "FULFILMENT_RECEIVED",
+        "refundAmount": 798100,
+        "amount": {
+          "value": 7981.0,
+          "currencyId": "RUR"
+        },
+        "items": [
+          {
+            "marketSku": 101815168666,
+            "shopSku": "ChelsiGrafit1",
+            "count": 1,
+            "instances": [
+              {
+                "stockType": "DEFECT",
+                "status": "RECEIVED_ON_FULFILLMENT"
+              }
+            ],
+            "tracks": [
+              {
+                "trackCode": "P000730604"
+              },
+              {
+                "trackCode": "P000730579"
+              }
+            ]
+          }
+        ],
+        "returnType": "UNREDEEMED"
+      },
+      {
+        "id": 10661191,
+        "orderId": 150175931,
+        "creationDate": "2022-11-03T10:20:43.721+03:00",
+        "updateDate": "2022-11-09T07:51:28.377+03:00",
+        "shipmentRecipientType": "SHOP",
+        "shipmentStatus": "FULFILMENT_RECEIVED",
+        "refundAmount": 805500,
+        "amount": {
+          "value": 8055.0,
+          "currencyId": "RUR"
+        },
+        "items": [
+          {
+            "marketSku": 101815168666,
+            "shopSku": "ChelsiGrafit1",
+            "count": 1,
+            "instances": [
+              {
+                "stockType": "DEFECT",
+                "status": "RECEIVED_ON_FULFILLMENT"
+              }
+            ],
+            "tracks": [
+              {
+                "trackCode": "P000724801"
+              },
+              {
+                "trackCode": "P000724800"
+              }
+            ]
+          }
+        ],
+        "returnType": "UNREDEEMED"
+      },
+      {
+        "id": 3074008,
+        "orderId": 148939787,
+        "creationDate": "2022-10-31T00:43:01.107+03:00",
+        "updateDate": "2022-11-07T10:46:16.975+03:00",
+        "refundStatus": "REFUNDED",
+        "shipmentRecipientType": "SHOP",
+        "shipmentStatus": "FULFILMENT_RECEIVED",
+        "refundAmount": 805500,
+        "amount": {
+          "value": 8055.0,
+          "currencyId": "RUR"
+        },
+        "items": [
+          {
+            "marketSku": 101762716372,
+            "shopSku": "4789",
+            "count": 1,
+            "decisions": [
+              {
+                "returnItemId": 3074009,
+                "count": 1,
+                "comment": "Отвратительно! Привезли сплошной брак! \nОдна стенка сломана, четыре лицевых вставки с сбитыми углами! Срочно верните деньги и заберите брак ",
+                "reasonType": "BAD_QUALITY",
+                "subreasonType": "UNKNOWN",
+                "decisionType": "UNKNOWN",
+                "refundAmount": 805500,
+                "amount": {
+                  "value": 8055.0,
+                  "currencyId": "RUR"
+                },
+                "images": [
+                  "76157de514447193537e25900b28e95c437d9379",
+                  "9e753a35c276c745691a52c627046073db7ed291",
+                  "c450be6edcb780c44cb500fab3c4d4007a71c24a",
+                  "c322a9cb6acd947fba3017087cafa285345739a6"
+                ]
+              }
+            ],
+            "instances": [
+              {
+                "stockType": "DEFECT",
+                "status": "RECEIVED_ON_FULFILLMENT"
+              }
+            ],
+            "tracks": [
+              {
+                "trackCode": "VOZ_MK_329174"
+              }
+            ]
+          }
+        ],
+        "returnType": "RETURN",
+        "fastReturn": false
+      },
+      {
+        "id": 3015199,
+        "orderId": 144473209,
+        "creationDate": "2022-10-23T16:23:27.836+03:00",
+        "updateDate": "2022-11-03T13:06:16.494+03:00",
+        "refundStatus": "REFUNDED",
+        "shipmentRecipientType": "SHOP",
+        "shipmentStatus": "FULFILMENT_RECEIVED",
+        "refundAmount": 630000,
+        "amount": {
+          "value": 6300.0,
+          "currencyId": "RUR"
+        },
+        "items": [
+          {
+            "marketSku": 101792665504,
+            "shopSku": "1885",
+            "count": 1,
+            "decisions": [
+              {
+                "returnItemId": 3015200,
+                "count": 1,
+                "comment": "Кровать пришла не полностью, пришло все кроме основания. Так же по запчастям недовес, на коробке написано 10кг, а весит от силы 1кг± . Так же на одной из коробок висит \"акт о поврежденных посылках\", т.е товар пришёл СРАЗУ с этой бумагой. Думаю, доказательств достаточно :)",
+                "reasonType": "BAD_QUALITY",
+                "subreasonType": "UNKNOWN",
+                "decisionType": "UNKNOWN",
+                "refundAmount": 630000,
+                "amount": {
+                  "value": 6300.0,
+                  "currencyId": "RUR"
+                },
+                "images": [
+                  "7483d15e00b9ddc34f050774dd7f07ef6fd1f89e",
+                  "b11e601f5eb1c79e6762edc4116e9719779c1a77",
+                  "7c9553a80b233dfc7140ed94f39a14eac6a10b6f",
+                  "6686b7c3d8a14a6dd4da7c40ce7457079867dd9b",
+                  "5c8308ec1c5f21cee76abd1b7bd15aea7a9da626",
+                  "8384120afa1c4ba3450b2c554899280bb65050dc"
+                ]
+              }
+            ],
+            "instances": [
+              {
+                "stockType": "DEFECT",
+                "status": "RECEIVED_ON_FULFILLMENT"
+              }
+            ],
+            "tracks": [
+              {
+                "trackCode": "VOZ_MK_336907"
+              }
+            ]
+          }
+        ],
+        "returnType": "RETURN",
+        "fastReturn": false
+      },
+      {
+        "id": 10497201,
+        "orderId": 147161752,
+        "creationDate": "2022-10-27T01:21:40.126+03:00",
+        "updateDate": "2022-10-27T14:00:52.435+03:00",
+        "shipmentRecipientType": "SHOP",
+        "shipmentStatus": "IN_TRANSIT",
+        "refundAmount": 1755000,
+        "amount": {
+          "value": 17550.0,
+          "currencyId": "RUR"
+        },
+        "items": [
+          {
+            "marketSku": 101825979323,
+            "shopSku": "ShkaF20_1200",
+            "count": 1,
+            "instances": [
+              {
+                "status": "IN_TRANSIT"
+              }
+            ],
+            "tracks": [
+              {
+                "trackCode": "P000694082"
+              },
+              {
+                "trackCode": "P000694079"
+              },
+              {
+                "trackCode": "P000694086"
+              }
+            ]
+          }
+        ],
+        "returnType": "UNREDEEMED"
+      },
+      {
+        "id": 2799140,
+        "orderId": 137642341,
+        "creationDate": "2022-09-20T19:44:01.929+03:00",
+        "updateDate": "2022-10-14T16:56:22.198+03:00",
+        "refundStatus": "REFUNDED",
+        "shipmentRecipientType": "SHOP",
+        "shipmentStatus": "FULFILMENT_RECEIVED",
+        "refundAmount": 805500,
+        "amount": {
+          "value": 8055.0,
+          "currencyId": "RUR"
+        },
+        "items": [
+          {
+            "marketSku": 101762746701,
+            "shopSku": "4788",
+            "count": 1,
+            "decisions": [
+              {
+                "returnItemId": 2799141,
+                "count": 1,
+                "comment": "Открыл упаковку. Внешний вид был потрепан и всё в скотче. Подумал ну мало ли разорвали. Потом внутри увидел сколы и мятины на углах мебели. Также есть повреждения на лицевой стороне",
+                "reasonType": "BAD_QUALITY",
+                "subreasonType": "UNKNOWN",
+                "decisionType": "UNKNOWN",
+                "refundAmount": 805500,
+                "amount": {
+                  "value": 8055.0,
+                  "currencyId": "RUR"
+                },
+                "images": [
+                  "a84a17899bbbdb92325736f8a20b73b0f34eec05",
+                  "4d37c36e002dd7a98a9dd9aa546f7e707fa8a200",
+                  "d1f2007dbda7d00ad95ac28ce01311cc1fb38327"
+                ]
+              }
+            ],
+            "instances": [
+              {
+                "stockType": "DEFECT",
+                "status": "RECEIVED_ON_FULFILLMENT"
+              }
+            ],
+            "tracks": [
+              {
+                "trackCode": "VOZ_MK_267070"
+              }
+            ]
+          }
+        ],
+        "returnType": "RETURN",
+        "fastReturn": false
+      },
+      {
+        "id": 1770468,
+        "orderId": 138831196,
+        "creationDate": "2022-09-25T06:40:17.248+03:00",
+        "updateDate": "2022-10-13T21:01:34.366+03:00",
+        "shipmentRecipientType": "SHOP",
+        "shipmentStatus": "FULFILMENT_RECEIVED",
+        "refundAmount": 805500,
+        "amount": {
+          "value": 8055.0,
+          "currencyId": "RUR"
+        },
+        "items": [
+          {
+            "marketSku": 101762716372,
+            "shopSku": "4789",
+            "count": 1,
+            "instances": [
+              {
+                "stockType": "DEFECT",
+                "status": "RECEIVED_ON_FULFILLMENT"
+              }
+            ],
+            "tracks": [
+              {
+                "trackCode": "P000602609"
+              },
+              {
+                "trackCode": "P000602616"
+              }
+            ]
+          }
+        ],
+        "returnType": "UNREDEEMED"
+      },
+      {
+        "id": 1434564,
+        "orderId": 132355098,
+        "creationDate": "2022-09-07T00:20:43.607+03:00",
+        "updateDate": "2022-10-01T21:21:16.973+03:00",
+        "shipmentRecipientType": "SHOP",
+        "shipmentStatus": "FULFILMENT_RECEIVED",
+        "refundAmount": 630000,
+        "amount": {
+          "value": 6300.0,
+          "currencyId": "RUR"
+        },
+        "items": [
+          {
+            "marketSku": 101792665504,
+            "shopSku": "1885",
+            "count": 1,
+            "instances": [
+              {
+                "stockType": "FIT",
+                "status": "RECEIVED_ON_FULFILLMENT"
+              }
+            ],
+            "tracks": [
+              {
+                "trackCode": "P000539778"
+              },
+              {
+                "trackCode": "P000539780"
+              },
+              {
+                "trackCode": "P000539779"
+              },
+              {
+                "trackCode": "P000539781"
+              }
+            ]
+          }
+        ],
+        "returnType": "UNREDEEMED"
+      },
+      {
+        "id": 2798567,
+        "orderId": 137661771,
+        "creationDate": "2022-09-20T18:27:22.059+03:00",
+        "updateDate": "2022-09-29T13:06:02.681+03:00",
+        "refundStatus": "REFUNDED",
+        "shipmentRecipientType": "SHOP",
+        "shipmentStatus": "FULFILMENT_RECEIVED",
+        "refundAmount": 801000,
+        "amount": {
+          "value": 8010.0,
+          "currencyId": "RUR"
+        },
+        "items": [
+          {
+            "marketSku": 101775180405,
+            "shopSku": "4629",
+            "count": 1,
+            "decisions": [
+              {
+                "returnItemId": 2798568,
+                "count": 1,
+                "comment": "Фурнитуры нет",
+                "reasonType": "BAD_QUALITY",
+                "subreasonType": "UNKNOWN",
+                "decisionType": "UNKNOWN",
+                "refundAmount": 801000,
+                "amount": {
+                  "value": 8010.0,
+                  "currencyId": "RUR"
+                },
+                "images": [
+                  "3d09de23512010f87e0ffa984347fe13162a4240"
+                ]
+              }
+            ],
+            "instances": [
+              {
+                "stockType": "DEFECT",
+                "status": "RECEIVED_ON_FULFILLMENT"
+              }
+            ],
+            "tracks": [
+              {
+                "trackCode": "VOZ_MK_271574"
+              }
+            ]
+          }
+        ],
+        "returnType": "RETURN",
+        "fastReturn": false
+      },
+      {
+        "id": 1690885,
+        "orderId": 136451534,
+        "creationDate": "2022-09-20T16:40:26.125+03:00",
+        "updateDate": "2022-09-28T14:06:43.361+03:00",
+        "shipmentRecipientType": "SHOP",
+        "shipmentStatus": "FULFILMENT_RECEIVED",
+        "refundAmount": 895000,
+        "amount": {
+          "value": 8950.0,
+          "currencyId": "RUR"
+        },
+        "items": [
+          {
+            "marketSku": 101762746701,
+            "shopSku": "4788",
+            "count": 1,
+            "instances": [
+              {
+                "stockType": "DEFECT",
+                "status": "RECEIVED_ON_FULFILLMENT"
+              }
+            ],
+            "tracks": [
+              {
+                "trackCode": "P000591329"
+              },
+              {
+                "trackCode": "P000591567"
+              }
+            ]
+          }
+        ],
+        "returnType": "UNREDEEMED"
+      },
+      {
+        "id": 1657071,
+        "orderId": 137099951,
+        "creationDate": "2022-09-19T10:42:34.664+03:00",
+        "updateDate": "2022-09-27T15:56:41.326+03:00",
+        "shipmentRecipientType": "SHOP",
+        "shipmentStatus": "FULFILMENT_RECEIVED",
+        "refundAmount": 463500,
+        "amount": {
+          "value": 4635.0,
+          "currencyId": "RUR"
+        },
+        "items": [
+          {
+            "marketSku": 101756808702,
+            "shopSku": "685",
+            "count": 1,
+            "instances": [
+              {
+                "stockType": "FIT",
+                "status": "RECEIVED_ON_FULFILLMENT"
+              }
+            ],
+            "tracks": [
+              {
+                "trackCode": "P000591389"
+              },
+              {
+                "trackCode": "P000591388"
+              }
+            ]
+          }
+        ],
+        "returnType": "UNREDEEMED"
+      },
+      {
+        "id": 1252945,
+        "orderId": 129642873,
+        "creationDate": "2022-08-26T21:00:50.109+03:00",
+        "updateDate": "2022-09-27T08:16:19.217+03:00",
+        "shipmentRecipientType": "SHOP",
+        "shipmentStatus": "FULFILMENT_RECEIVED",
+        "refundAmount": 630000,
+        "amount": {
+          "value": 6300.0,
+          "currencyId": "RUR"
+        },
+        "items": [
+          {
+            "marketSku": 101792665504,
+            "shopSku": "1885",
+            "count": 1,
+            "instances": [
+              {
+                "stockType": "DEFECT",
+                "status": "RECEIVED_ON_FULFILLMENT"
+              }
+            ],
+            "tracks": [
+              {
+                "trackCode": "P000515554"
+              },
+              {
+                "trackCode": "P000515489"
+              },
+              {
+                "trackCode": "P000515494"
+              },
+              {
+                "trackCode": "P000515497"
+              }
+            ]
+          }
+        ],
+        "returnType": "UNREDEEMED"
+      },
+      {
+        "id": 1681834,
+        "orderId": 137220660,
+        "creationDate": "2022-09-20T10:20:48.27+03:00",
+        "updateDate": "2022-09-24T21:51:43.911+03:00",
+        "shipmentRecipientType": "SHOP",
+        "shipmentStatus": "FULFILMENT_RECEIVED",
+        "refundAmount": 765000,
+        "amount": {
+          "value": 7650.0,
+          "currencyId": "RUR"
+        },
+        "items": [
+          {
+            "marketSku": 101762716372,
+            "shopSku": "4789",
+            "count": 1,
+            "instances": [
+              {
+                "stockType": "DEFECT",
+                "status": "RECEIVED_ON_FULFILLMENT"
+              }
+            ],
+            "tracks": [
+              {
+                "trackCode": "P000588339"
+              },
+              {
+                "trackCode": "P000588340"
+              }
+            ]
+          }
+        ],
+        "returnType": "UNREDEEMED"
+      },
+      {
+        "id": 1659384,
+        "orderId": 137213542,
+        "creationDate": "2022-09-19T13:10:45.602+03:00",
+        "updateDate": "2022-09-22T08:51:29.557+03:00",
+        "shipmentRecipientType": "SHOP",
+        "shipmentStatus": "FULFILMENT_RECEIVED",
+        "refundAmount": 700000,
+        "amount": {
+          "value": 7000.0,
+          "currencyId": "RUR"
+        },
+        "items": [
+          {
+            "marketSku": 101760113161,
+            "shopSku": "98546",
+            "count": 1,
+            "instances": [
+              {
+                "stockType": "FIT",
+                "status": "RECEIVED_ON_FULFILLMENT"
+              }
+            ],
+            "tracks": [
+              {
+                "trackCode": "P000585839"
+              },
+              {
+                "trackCode": "P000585826"
+              }
+            ]
+          }
+        ],
+        "returnType": "UNREDEEMED"
+      },
+      {
+        "id": 1658486,
+        "orderId": 136638959,
+        "creationDate": "2022-09-19T12:21:49.868+03:00",
+        "updateDate": "2022-09-22T08:51:27.566+03:00",
+        "shipmentRecipientType": "SHOP",
+        "shipmentStatus": "FULFILMENT_RECEIVED",
+        "refundAmount": 720900,
+        "amount": {
+          "value": 7209.0,
+          "currencyId": "RUR"
+        },
+        "items": [
+          {
+            "marketSku": 101775180405,
+            "shopSku": "4629",
+            "count": 1,
+            "instances": [
+              {
+                "stockType": "FIT",
+                "status": "RECEIVED_ON_FULFILLMENT"
+              }
+            ],
+            "tracks": [
+              {
+                "trackCode": "P000588475"
+              },
+              {
+                "trackCode": "P000588478"
+              },
+              {
+                "trackCode": "P000588482"
+              },
+              {
+                "trackCode": "P000588479"
+              }
+            ]
+          }
+        ],
+        "returnType": "UNREDEEMED"
+      },
+      {
+        "id": 1342752,
+        "orderId": 132397434,
+        "creationDate": "2022-09-02T09:20:16.047+03:00",
+        "updateDate": "2022-09-06T15:22:22.636+03:00",
+        "shipmentRecipientType": "SHOP",
+        "shipmentStatus": "FULFILMENT_RECEIVED",
+        "refundAmount": 630000,
+        "amount": {
+          "value": 6300.0,
+          "currencyId": "RUR"
+        },
+        "items": [
+          {
+            "marketSku": 101775328707,
+            "shopSku": "3019",
+            "count": 1,
+            "instances": [
+              {
+                "stockType": "DEFECT",
+                "status": "RECEIVED_ON_FULFILLMENT"
+              }
+            ],
+            "tracks": [
+              {
+                "trackCode": "P000539201"
+              },
+              {
+                "trackCode": "P000539363"
+              },
+              {
+                "trackCode": "P000539369"
+              }
+            ]
+          }
+        ],
+        "returnType": "UNREDEEMED"
+      },
+      {
+        "id": 2584788,
+        "orderId": 126932680,
+        "creationDate": "2022-08-15T17:51:58.507+03:00",
+        "updateDate": "2022-09-05T19:56:24.252+03:00",
+        "refundStatus": "REFUNDED",
+        "shipmentRecipientType": "SHOP",
+        "shipmentStatus": "FULFILMENT_RECEIVED",
+        "refundAmount": 895000,
+        "amount": {
+          "value": 8950.0,
+          "currencyId": "RUR"
+        },
+        "items": [
+          {
+            "marketSku": 101762746701,
+            "shopSku": "4788",
+            "count": 1,
+            "decisions": [
+              {
+                "returnItemId": 2584789,
+                "count": 1,
+                "comment": "Расколот ",
+                "reasonType": "BAD_QUALITY",
+                "subreasonType": "UNKNOWN",
+                "decisionType": "UNKNOWN",
+                "refundAmount": 895000,
+                "amount": {
+                  "value": 8950.0,
+                  "currencyId": "RUR"
+                },
+                "images": [
+                  "a10328d56c91647594456daee6760bf6e8611c19"
+                ]
+              }
+            ],
+            "instances": [
+              {
+                "stockType": "DEFECT",
+                "status": "RECEIVED_ON_FULFILLMENT"
+              }
+            ],
+            "tracks": [
+              {
+                "trackCode": "VOZ_FF_2584788"
+              }
+            ]
+          }
+        ],
+        "returnType": "RETURN",
+        "fastReturn": false
+      },
+      {
+        "id": 1319889,
+        "orderId": 132550955,
+        "creationDate": "2022-08-31T18:30:27.967+03:00",
+        "updateDate": "2022-09-04T16:52:26.585+03:00",
+        "shipmentRecipientType": "SHOP",
+        "shipmentStatus": "FULFILMENT_RECEIVED",
+        "refundAmount": 515000,
+        "amount": {
+          "value": 5150.0,
+          "currencyId": "RUR"
+        },
+        "items": [
+          {
+            "marketSku": 101756808702,
+            "shopSku": "685",
+            "count": 1,
+            "instances": [
+              {
+                "stockType": "FIT",
+                "status": "RECEIVED_ON_FULFILLMENT"
+              }
+            ],
+            "tracks": [
+              {
+                "trackCode": "P000533880"
+              },
+              {
+                "trackCode": "P000533881"
+              }
+            ]
+          }
+        ],
+        "returnType": "UNREDEEMED"
+      },
+      {
+        "id": 2652547,
+        "orderId": 131467570,
+        "creationDate": "2022-08-27T18:04:29.722+03:00",
+        "updateDate": "2022-09-01T20:40:57.813+03:00",
+        "refundStatus": "REFUNDED",
+        "shipmentRecipientType": "SHOP",
+        "shipmentStatus": "FULFILMENT_RECEIVED",
+        "refundAmount": 729000,
+        "amount": {
+          "value": 7290.0,
+          "currencyId": "RUR"
+        },
+        "items": [
+          {
+            "marketSku": 101770395130,
+            "shopSku": "4841",
+            "count": 1,
+            "decisions": [
+              {
+                "returnItemId": 2652548,
+                "count": 1,
+                "comment": "Привезли не полный комплект, не хватает дна одного ящика и фурнитуры",
+                "reasonType": "BAD_QUALITY",
+                "subreasonType": "UNKNOWN",
+                "decisionType": "UNKNOWN",
+                "refundAmount": 729000,
+                "amount": {
+                  "value": 7290.0,
+                  "currencyId": "RUR"
+                },
+                "images": [
+                  "27c51fd46a640f92aee01adbcdfdc6036c91d886"
+                ]
+              }
+            ],
+            "instances": [
+              {
+                "stockType": "DEFECT",
+                "status": "RECEIVED_ON_FULFILLMENT"
+              }
+            ],
+            "tracks": [
+              {
+                "trackCode": "VOZ_MK_227310"
+              }
+            ]
+          }
+        ],
+        "returnType": "RETURN",
+        "fastReturn": false
+      }
+    ]
+  }
+}
