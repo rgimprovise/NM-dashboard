@@ -1,0 +1,78 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Testing
+coverage/
+*.log
+
+# Production
+dist/
+build/
+*.local
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+
+# Data files (large)
+data/vk_data/*.xlsx
+data/vk_data/*.csv
+data/yandex_data/*.xlsx
+data/yandex_data/*.csv
+data/qr_codes/*.png
+
+# Keep JSON files for reference
+!data/vk_data/*.json
+!data/yandex_data/*.json
+
+# Config with secrets (keep example)
+config.py
+!docs/config_example.py
+
+# Cache
+.cache/
+*.cache
+
+# Temporary files
+*.tmp
+*.temp
+.tmp/
+
+# Netlify
+.netlify/
+
+# Vite
+.vite/
+
