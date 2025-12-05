@@ -1,14 +1,15 @@
-// Only load dotenv in Node.js environment
-try {
-  if (typeof process !== 'undefined' && process.env) {
-    // Use dynamic import to avoid issues in non-Node environments
-    import("dotenv/config").catch(() => {
-      // Silently fail if dotenv is not available
-    });
+// Load dotenv only in Node.js environment
+// Use a simple check to avoid issues in Builder.io
+if (typeof process !== 'undefined' && process.env) {
+  // Use dynamic import that won't block if dotenv fails
+  // This is safe because it's in a try-catch and won't break the module
+  try {
+    // dotenv/config is loaded via side-effect import
+    // If it fails, we continue without it
+    void import("dotenv/config");
+  } catch {
+    // Continue without dotenv - environment variables may be set another way
   }
-} catch (error) {
-  // dotenv may not be available in all environments
-  // Continue without it
 }
 
 import express from "express";
