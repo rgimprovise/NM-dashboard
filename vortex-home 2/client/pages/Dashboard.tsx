@@ -14,6 +14,7 @@ import {
   AlertCircle,
   Loader,
   Info,
+  Package,
 } from "lucide-react";
 import { dataService, getPeriodParams, type PeriodParams, type FunnelSummary } from "@/services/dataService";
 import { DashboardSummary, RevenueChartPoint, TopProduct, Region } from "@/types/dashboard";
@@ -39,6 +40,7 @@ export default function Dashboard() {
     byManager: SalesSummaryByManager[];
   } | null>(null);
   const [oneCProductCount, setOneCProductCount] = useState<number>(0);
+  const [oneCStockValue, setOneCStockValue] = useState<number>(0);
   const [oneCLoading, setOneCLoading] = useState(true);
   
   // Executive Overview / Funnel Summary state
@@ -144,6 +146,14 @@ export default function Dashboard() {
 
         setOneCSalesSummary(salesSummary);
         setOneCProductCount(products.length);
+        
+        // Рассчитываем стоимость остатков
+        const stockValue = products.reduce((sum, product) => {
+          const price = product.retailPrice || 0;
+          const stock = product.stock || 0;
+          return sum + (price * stock);
+        }, 0);
+        setOneCStockValue(stockValue);
       } catch (err) {
         console.error("Error loading 1C data:", err);
         // Set defaults on error
@@ -474,27 +484,35 @@ export default function Dashboard() {
             <CardTitle>Топ 5 товаров по выручке</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {topProducts.map((product) => (
-                <div
-                  key={product.product_id}
-                  className="flex items-center gap-4 pb-4 border-b last:border-0"
-                >
-                  <div className="flex-1">
-                    <h4 className="font-medium text-foreground text-sm">
-                      {product.name}
-                    </h4>
-                    <p className="text-xs text-muted-foreground">{product.category}</p>
+            {topProducts.length > 0 ? (
+              <div className="space-y-4">
+                {topProducts.map((product) => (
+                  <div
+                    key={product.product_id}
+                    className="flex items-center gap-4 pb-4 border-b last:border-0"
+                  >
+                    <div className="flex-1">
+                      <h4 className="font-medium text-foreground text-sm">
+                        {product.name}
+                      </h4>
+                      <p className="text-xs text-muted-foreground">{product.category}</p>
+                    </div>
+                    <div className="text-right">
+                      <Badge variant="secondary">{product.share.toFixed(1)}%</Badge>
+                      <p className="text-sm font-semibold text-foreground mt-1">
+                        ₽{(product.revenue / 1000).toFixed(0)}K
+                      </p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <Badge variant="secondary">{product.share.toFixed(1)}%</Badge>
-                    <p className="text-sm font-semibold text-foreground mt-1">
-                      ₽{(product.revenue / 1000).toFixed(0)}K
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <Info className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                <p>Недостаточно данных</p>
+                <p className="text-xs mt-1">Загрузите данные о продажах из 1С или Yandex Market</p>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -533,8 +551,9 @@ export default function Dashboard() {
           <CardTitle>Выручка по категориям</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            {topProducts.map((product) => {
+          {topProducts.length > 0 ? (
+            <div className="space-y-3">
+              {topProducts.map((product) => {
               const percentage = product.share;
               return (
                 <div key={product.product_id}>
@@ -552,8 +571,15 @@ export default function Dashboard() {
                   </div>
                 </div>
               );
-            })}
-          </div>
+              })}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              <Info className="w-8 h-8 mx-auto mb-2 opacity-50" />
+              <p>Недостаточно данных</p>
+              <p className="text-xs mt-1">Загрузите данные о продажах из 1С или Yandex Market</p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -578,22 +604,28 @@ export default function Dashboard() {
         ) : oneCSalesSummary ? (
           <>
             {/* 1C KPI Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
               <KPICard
                 title="Выручка 1С"
-                value={`${(oneCSalesSummary.totalRevenue / 1000000).toFixed(2)}M`}
+                value={oneCSalesSummary.totalRevenue > 0 
+                  ? `${(oneCSalesSummary.totalRevenue / 1000000).toFixed(2)}M`
+                  : "0"}
                 unit="₽"
                 icon={<DollarSign className="w-5 h-5" />}
               />
               <KPICard
                 title="Возвраты"
-                value={`${(oneCSalesSummary.totalReturns / 1000).toFixed(0)}K`}
+                value={oneCSalesSummary.totalReturns > 0
+                  ? `${(oneCSalesSummary.totalReturns / 1000).toFixed(0)}K`
+                  : "0"}
                 unit="₽"
                 icon={<AlertCircle className="w-5 h-5" />}
               />
               <KPICard
                 title="Чистая выручка"
-                value={`${(oneCSalesSummary.netRevenue / 1000000).toFixed(2)}M`}
+                value={oneCSalesSummary.netRevenue > 0
+                  ? `${(oneCSalesSummary.netRevenue / 1000000).toFixed(2)}M`
+                  : "0"}
                 unit="₽"
                 icon={<TrendingUp className="w-5 h-5" />}
               />
@@ -605,8 +637,16 @@ export default function Dashboard() {
               />
               <KPICard
                 title="Кол-во SKU в базе"
-                value={oneCProductCount}
+                value={oneCProductCount.toString()}
                 icon={<ShoppingCart className="w-5 h-5" />}
+              />
+              <KPICard
+                title="Стоимость остатков"
+                value={oneCStockValue > 0
+                  ? `${(oneCStockValue / 1000000).toFixed(2)}M`
+                  : "0"}
+                unit="₽"
+                icon={<Package className="w-5 h-5" />}
               />
             </div>
 

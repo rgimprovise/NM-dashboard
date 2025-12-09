@@ -27,14 +27,14 @@ class CacheManager {
 
   constructor() {
     try {
-      // Автоочистка устаревших записей каждые 5 минут
+    // Автоочистка устаревших записей каждые 5 минут
       // Check if setInterval is available (may not be in all environments)
       if (typeof setInterval !== 'undefined') {
-        this.cleanupInterval = setInterval(() => {
-          this.cleanup();
-        }, 5 * 60 * 1000);
+    this.cleanupInterval = setInterval(() => {
+      this.cleanup();
+    }, 5 * 60 * 1000);
       }
-      console.log('🗄️  Cache Manager initialized');
+    console.log('🗄️  Cache Manager initialized');
     } catch (error) {
       console.warn('⚠️ Cache Manager initialization warning:', error instanceof Error ? error.message : String(error));
       // Continue without cleanup interval
@@ -215,10 +215,10 @@ class CacheManager {
   destroy(): void {
     try {
       if (this.cleanupInterval && typeof clearInterval !== 'undefined') {
-        clearInterval(this.cleanupInterval);
+    clearInterval(this.cleanupInterval);
       }
-      this.cache.clear();
-      console.log('🗄️  Cache Manager destroyed');
+    this.cache.clear();
+    console.log('🗄️  Cache Manager destroyed');
     } catch (error) {
       console.warn('⚠️ Cache Manager destroy warning:', error instanceof Error ? error.message : String(error));
     }
@@ -251,15 +251,15 @@ export const CACHE_TTL = {
 // Graceful shutdown (only in Node.js environment)
 if (typeof process !== 'undefined' && process.on) {
   try {
-    process.on('SIGINT', () => {
-      cacheManager.destroy();
-      process.exit(0);
-    });
+process.on('SIGINT', () => {
+  cacheManager.destroy();
+  process.exit(0);
+});
 
-    process.on('SIGTERM', () => {
-      cacheManager.destroy();
-      process.exit(0);
-    });
+process.on('SIGTERM', () => {
+  cacheManager.destroy();
+  process.exit(0);
+});
   } catch (error) {
     // Ignore errors in environments that don't support process signals
     console.warn('⚠️ Could not register process signal handlers');

@@ -11,7 +11,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
-import { mockProducts } from "@/lib/mockData";
+// import { mockProducts } from "@/lib/mockData"; // Убрано - используем реальные данные из 1C
 import { Search, AlertCircle, Link2, Loader } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { dataService } from "@/services/dataService";
@@ -38,13 +38,23 @@ export default function Products() {
       try {
         setLoading(true);
         setError(null);
-        const data = await dataService.getProducts();
-        setProducts(data);
+        // Используем данные из 1C (единый источник)
+        const data = await dataService.getOneCProductSnapshot();
+        setProducts(data.map(p => ({
+          id: p.article || p.name,
+          name: p.name,
+          offer_id: p.article || "",
+          category: p.category || "Без категории",
+          price: p.retailPrice || 0,
+          stock_total: p.stock || 0,
+          stock_status: p.stock > 0 ? "in_stock" : "out_of_stock",
+        })));
       } catch (err) {
         const message = err instanceof Error ? err.message : "Failed to load products";
         setError(message);
         console.error("Products error:", err);
-        setProducts(mockProducts);
+        // Не используем mockProducts - показываем пустой список
+        setProducts([]);
       } finally {
         setLoading(false);
       }

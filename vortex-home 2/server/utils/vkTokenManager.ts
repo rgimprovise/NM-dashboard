@@ -193,15 +193,15 @@ export function initTokenManager(): void {
       return;
     }
 
-    console.log('🔧 Инициализация VK Token Manager...');
-    
-    const tokens = loadTokens();
-    if (tokens) {
-      tokenCache = tokens;
-      const hoursUntilExpiry = (tokens.expires_at - Date.now()) / (1000 * 60 * 60);
-      console.log(`✅ VK токен загружен (действителен еще ${hoursUntilExpiry.toFixed(1)} часов)`);
-    } else {
-      console.warn('⚠️ VK токены не найдены в .env');
+  console.log('🔧 Инициализация VK Token Manager...');
+  
+  const tokens = loadTokens();
+  if (tokens) {
+    tokenCache = tokens;
+    const hoursUntilExpiry = (tokens.expires_at - Date.now()) / (1000 * 60 * 60);
+    console.log(`✅ VK токен загружен (действителен еще ${hoursUntilExpiry.toFixed(1)} часов)`);
+  } else {
+    console.warn('⚠️ VK токены не найдены в .env');
     }
   } catch (error) {
     console.warn('⚠️ VK Token Manager initialization failed:', error instanceof Error ? error.message : String(error));

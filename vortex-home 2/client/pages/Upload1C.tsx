@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -84,40 +84,65 @@ export default function Upload1C() {
     errors: number;
   } | null>(null);
   const [loading, setLoading] = useState(false);
-  const [uploadHistory, setUploadHistory] = useState<UploadResult[]>([
-    {
-      id: 1,
-      filename: "nomenclature_2025-11-12.xlsx",
-      uploaded_at: "2025-11-12T10:30:00Z",
-      user: "admin",
-      status: "success",
-      total_rows: 200,
-      imported: 150,
-      updated: 45,
-      errors: 5,
-    },
-  ]);
+  const [uploadHistory, setUploadHistory] = useState<UploadResult[]>([]);
 
-  const mockMappings = [
-    {
-      id: 1,
-      c1_code: "00001234",
-      c1_name: "Кухня Модерн 3200 белый глянец",
-      yandex_offer_id: "KUH-MOD-001",
-      yandex_name: "Кухня 'Модерн' белый глянец 3.2м",
-      confidence: 1.0,
-      type: "auto",
-    },
-    {
-      id: 2,
-      c1_code: "00001235",
-      c1_name: "Шкаф Классик 4-дверный дуб",
-      yandex_offer_id: "SHKF-KLAS-002",
-      yandex_name: "Шкаф 'Классик' 4-дверный дуб",
-      confidence: 0.95,
-      type: "auto",
-    },
-  ];
+  // Загружаем историю и маппинги при монтировании
+  useEffect(() => {
+    loadUploadHistory();
+    if (activeTab === "mappings") {
+      loadMappings();
+    }
+  }, [activeTab]);
+
+  const loadUploadHistory = async () => {
+    try {
+      const response = await fetch("/api/1c/upload-history");
+      const result = await response.json();
+      if (result.success && result.items) {
+        setUploadHistory(result.items);
+      }
+    } catch (error) {
+      console.error("Error loading upload history:", error);
+    }
+  };
+
+  const [mappings, setMappings] = useState<any[]>([]);
+  const [mappingsLoading, setMappingsLoading] = useState(false);
+
+  const loadMappings = async () => {
+    try {
+      setMappingsLoading(true);
+      const response = await fetch("/api/mapping/products?limit=100");
+      const result = await response.json();
+      if (result.success && result.mappings) {
+        setMappings(result.mappings);
+      }
+    } catch (error) {
+      console.error("Error loading mappings:", error);
+    } finally {
+      setMappingsLoading(false);
+    }
+  };
+
+  const handleAutoMap = async () => {
+    try {
+      setMappingsLoading(true);
+      const response = await fetch("/api/mapping/auto", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confidence_threshold: 0.8, method: "both" }),
+      });
+      const result = await response.json();
+      if (result.success) {
+        alert(`Автоматически связано ${result.mapped} товаров`);
+        await loadMappings();
+      }
+    } catch (error) {
+      alert(`Ошибка при автоматической связи: ${error instanceof Error ? error.message : "Unknown error"}`);
+    } finally {
+      setMappingsLoading(false);
+    }
+  };
 
   const handleFileSelect = async (file: File) => {
     try {
@@ -174,34 +199,64 @@ export default function Upload1C() {
   };
 
   const handleImport = async () => {
-    if (parsedProducts.length === 0) {
-      alert("Нет товаров для импорта");
+    if (!selectedFile) {
+      alert("Пожалуйста, выберите файл");
       return;
     }
 
     try {
-      // Here you would send data to backend API
-      // For now, just add to upload history
+      setLoading(true);
+
+      // Отправляем файл на backend
+      const formData = new FormData();
+      formData.append("file", selectedFile);
+
+      const response = await fetch("/api/1c/upload-products", {
+        method: "POST",
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.error || "Ошибка при загрузке файла");
+      }
+
+      // Обновляем историю загрузок
       const newUpload: UploadResult = {
-        id: uploadHistory.length + 1,
-        filename: selectedFile?.name || "unknown.xlsx",
+        id: Date.now(),
+        filename: selectedFile.name,
         uploaded_at: new Date().toISOString(),
         user: "admin",
-        status: parseErrors.length === 0 ? "success" : "partial",
-        total_rows: parseStats?.total_rows || 0,
-        imported: parsedProducts.length,
-        updated: 0,
-        errors: parseErrors.length,
-        errors_log: parseErrors,
+        status: result.errors === 0 ? "success" : result.errors < result.details.total_rows ? "partial" : "error",
+        total_rows: result.details.total_rows,
+        imported: result.imported,
+        updated: result.updated,
+        errors: result.errors,
+        errors_log: result.errors_log,
       };
 
       setUploadHistory([newUpload, ...uploadHistory]);
-      alert(`Импортировано ${parsedProducts.length} товаров`);
+      
+      // Показываем результат
+      if (result.errors === 0) {
+        alert(`✅ Успешно импортировано ${result.imported} товаров`);
+      } else {
+        alert(`⚠️ Импортировано ${result.imported} товаров, ошибок: ${result.errors}`);
+      }
+
+      // Очищаем форму
       setSelectedFile(null);
       setParsedProducts([]);
       setParseErrors([]);
+      setParseStats(null);
+      
+      // Обновляем историю загрузок с сервера
+      await loadUploadHistory();
     } catch (error) {
       alert(`Ошибка при импорте: ${error instanceof Error ? error.message : "Unknown error"}`);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -501,62 +556,85 @@ export default function Upload1C() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle>Связи товаров (1C ↔ Yandex)</CardTitle>
-                <Button size="sm">Автоматическая связь</Button>
+                <Button size="sm" onClick={handleAutoMap} disabled={mappingsLoading}>
+                  {mappingsLoading ? (
+                    <>
+                      <Loader className="w-4 h-4 mr-2 animate-spin" />
+                      Обработка...
+                    </>
+                  ) : (
+                    "Автоматическая связь"
+                  )}
+                </Button>
               </div>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Код 1C</TableHead>
-                      <TableHead>Название 1C</TableHead>
-                      <TableHead className="text-center">Статус</TableHead>
-                      <TableHead>Товар Yandex</TableHead>
-                      <TableHead className="text-center">Совпадение</TableHead>
-                      <TableHead className="text-right">Действия</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {mockMappings.map((mapping) => (
-                      <TableRow key={mapping.id}>
-                        <TableCell className="font-mono text-sm">
-                          {mapping.c1_code}
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-sm max-w-xs">{mapping.c1_name}</div>
-                        </TableCell>
-                        <TableCell className="text-center">
-                          {mapping.yandex_offer_id ? (
-                            <Link2 className="w-4 h-4 text-green-600 mx-auto" />
-                          ) : (
-                            <AlertCircle className="w-4 h-4 text-yellow-600 mx-auto" />
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-sm max-w-xs">
-                            {mapping.yandex_name || "Не связан"}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-center">
-                          {mapping.confidence ? (
-                            <Badge variant="secondary">
-                              {(mapping.confidence * 100).toFixed(0)}%
-                            </Badge>
-                          ) : (
-                            <span className="text-muted-foreground">-</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button variant="ghost" size="sm">
-                            Редактировать
-                          </Button>
-                        </TableCell>
+              {mappingsLoading && mappings.length === 0 ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader className="w-6 h-6 animate-spin text-primary" />
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Код 1C</TableHead>
+                        <TableHead>Название 1C</TableHead>
+                        <TableHead className="text-center">Статус</TableHead>
+                        <TableHead>Товар Yandex</TableHead>
+                        <TableHead className="text-center">Совпадение</TableHead>
+                        <TableHead className="text-right">Действия</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                    </TableHeader>
+                    <TableBody>
+                      {mappings.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                            Нет данных о связях. Нажмите "Автоматическая связь" для создания маппингов.
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        mappings.map((mapping) => (
+                      <TableRow key={mapping.id}>
+                          <TableCell className="font-mono text-sm">
+                            {mapping.c1_code || mapping.c1_article || "-"}
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm max-w-xs">{mapping.c1_name || "-"}</div>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {mapping.yandex_offer_id ? (
+                              <Link2 className="w-4 h-4 text-green-600 mx-auto" />
+                            ) : (
+                              <AlertCircle className="w-4 h-4 text-yellow-600 mx-auto" />
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm max-w-xs">
+                              {mapping.yandex_name || mapping.yandex_offer_id || "Не связан"}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {mapping.confidence ? (
+                              <Badge variant="secondary">
+                                {(mapping.confidence * 100).toFixed(0)}%
+                              </Badge>
+                            ) : (
+                              <span className="text-muted-foreground">-</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button variant="ghost" size="sm">
+                              Редактировать
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

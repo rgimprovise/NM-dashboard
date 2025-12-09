@@ -254,10 +254,10 @@ export class DataService {
     try {
       const orders = await yandexAPI.getOrders(periodRange.dateFrom, periodRange.dateTo);
 
-      // If no real orders, return mock data
+      // If no real orders, return empty array (no mock data)
       if (!orders || orders.length === 0) {
-        console.warn("No orders returned from API, using mock data");
-        return mockOrders;
+        console.warn("No orders returned from API");
+        return [];
       }
 
       console.log(`✅ Orders: получено ${orders.length} заказов`);
@@ -276,8 +276,8 @@ export class DataService {
 
       return mappedOrders;
     } catch (error) {
-      console.error("Error fetching orders, using mock data:", error);
-      return mockOrders;
+      console.error("Error fetching orders:", error);
+      return []; // Возвращаем пустой массив вместо mock данных
     }
   }
 
@@ -290,10 +290,10 @@ export class DataService {
         yandexAPI.getOrders(periodRange.dateFrom, periodRange.dateTo),
       ]);
 
-      // If no real orders, return mock data
+      // If no real orders, return empty array (no mock data)
       if (!orders || orders.length === 0) {
-        console.warn("No orders for products calculation, using mock data");
-        return mockTopProducts;
+        console.warn("No orders for products calculation");
+        return [];
       }
 
       // Group products by offerId and count sales

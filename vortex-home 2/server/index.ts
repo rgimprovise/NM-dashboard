@@ -42,6 +42,7 @@ import * as yandexRoutes from "./routes/yandex";
 import * as vkRoutes from "./routes/vk";
 import * as oneCRoutes from "./routes/oneC";
 import * as analyticsRoutes from "./routes/analytics";
+import * as mappingRoutes from "./routes/productMapping";
 import { initTokenManager } from "./utils/vkTokenManager";
 
 // Function to load .env file manually (kept for createServer call)
@@ -143,10 +144,17 @@ export function createServer() {
   app.get("/api/1c/returns", oneCRoutes.getReturns);
   app.get("/api/1c/stock-turnover", oneCRoutes.getStockTurnover);
   app.get("/api/1c/categories", oneCRoutes.getCategories);
+  app.post("/api/1c/upload-products", oneCRoutes.uploadProductsMiddleware, oneCRoutes.uploadProducts);
+  app.get("/api/1c/upload-history", oneCRoutes.getUploadHistory);
 
   // Analytics routes
   app.get("/api/analytics/funnel", analyticsRoutes.getFunnel);
   app.get("/api/analytics/data-quality", analyticsRoutes.getDataQuality);
+
+  // Product mapping routes
+  app.get("/api/mapping/products", mappingRoutes.getProductMappings);
+  app.post("/api/mapping/products", mappingRoutes.createProductMapping);
+  app.post("/api/mapping/auto", mappingRoutes.autoMapProducts);
 
   return app;
 }
