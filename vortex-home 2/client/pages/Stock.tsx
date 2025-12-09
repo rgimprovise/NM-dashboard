@@ -10,10 +10,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
-import { Search, Loader, AlertCircle, Package } from "lucide-react";
+import { Search, Loader, AlertCircle, Package, AlertTriangle } from "lucide-react";
 import { dataService } from "@/services/dataService";
 import { ProductSnapshot } from "../../shared/types/oneC";
 import { OneCStockTurnoverRow } from "../../shared/types/oneC";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 export default function Stock() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -25,6 +27,9 @@ export default function Stock() {
     totalTurnover: number;
     averageTurnover: number;
   } | null>(null);
+  const [dataQuality, setDataQuality] = useState<any>(null);
+  const [dataQualityLoading, setDataQualityLoading] = useState(false);
+  const [dataQualityDialogOpen, setDataQualityDialogOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -197,6 +202,168 @@ export default function Stock() {
               Найдено: {filteredProducts.length} из {products.length}
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Data Quality Report Button */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold">Качество данных 1С</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                Проверка полноты и корректности данных из 1С
+              </p>
+            </div>
+            <Dialog open={dataQualityDialogOpen} onOpenChange={setDataQualityDialogOpen}>
+              <DialogTrigger asChild>
+                <Button
+                  variant="outline"
+                  onClick={async () => {
+                    if (!dataQuality) {
+                      setDataQualityLoading(true);
+                      try {
+                        const quality = await dataService.getOneCDataQuality();
+                        setDataQuality(quality);
+                      } catch (err) {
+                        console.error("Error loading data quality:", err);
+                      } finally {
+                        setDataQualityLoading(false);
+                      }
+                    }
+                  }}
+                >
+                  <AlertTriangle className="w-4 h-4 mr-2" />
+                  Проблемные товары
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Отчет о качестве данных 1С</DialogTitle>
+                </DialogHeader>
+                {dataQualityLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader className="w-6 h-6 animate-spin text-primary" />
+                  </div>
+                ) : dataQuality ? (
+                  <div className="space-y-6">
+                    {/* Products Quality */}
+                    <div>
+                      <h3 className="font-semibold mb-3">Товары</h3>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                        <div className="p-3 border rounded">
+                          <div className="text-2xl font-bold">{dataQuality.products.total}</div>
+                          <div className="text-sm text-muted-foreground">Всего товаров</div>
+                        </div>
+                        <div className="p-3 border rounded border-orange-200 bg-orange-50">
+                          <div className="text-2xl font-bold text-orange-600">
+                            {dataQuality.products.missingArticleCount}
+                          </div>
+                          <div className="text-sm text-muted-foreground">Без артикула</div>
+                        </div>
+                        <div className="p-3 border rounded border-orange-200 bg-orange-50">
+                          <div className="text-2xl font-bold text-orange-600">
+                            {dataQuality.products.missingPriceCount}
+                          </div>
+                          <div className="text-sm text-muted-foreground">Без цены</div>
+                        </div>
+                        <div className="p-3 border rounded border-red-200 bg-red-50">
+                          <div className="text-2xl font-bold text-red-600">
+                            {dataQuality.products.duplicateArticleCount}
+                          </div>
+                          <div className="text-sm text-muted-foreground">Дубликаты артикулов</div>
+                        </div>
+                      </div>
+
+                      {/* Examples */}
+                      {dataQuality.products.missingArticleCount > 0 && (
+                        <div className="mb-4">
+                          <h4 className="font-medium mb-2 text-orange-600">
+                            Товары без артикула (первые 10):
+                          </h4>
+                          <ul className="list-disc list-inside text-sm space-y-1">
+                            {dataQuality.products.examples.missingArticle.slice(0, 10).map((item: any, idx: number) => (
+                              <li key={idx}>
+                                {item.name} {item.article && `(артикул: ${item.article})`}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {dataQuality.products.missingPriceCount > 0 && (
+                        <div className="mb-4">
+                          <h4 className="font-medium mb-2 text-orange-600">
+                            Товары без цены (первые 10):
+                          </h4>
+                          <ul className="list-disc list-inside text-sm space-y-1">
+                            {dataQuality.products.examples.missingPrice.slice(0, 10).map((item: any, idx: number) => (
+                              <li key={idx}>
+                                {item.name} {item.article && `(${item.article})`} - цена: ₽{item.retailPrice}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {dataQuality.products.duplicateArticleCount > 0 && (
+                        <div className="mb-4">
+                          <h4 className="font-medium mb-2 text-red-600">
+                            Дубликаты артикулов (первые 10):
+                          </h4>
+                          <ul className="list-disc list-inside text-sm space-y-1">
+                            {dataQuality.products.examples.duplicateArticles.slice(0, 10).map((item: any, idx: number) => (
+                              <li key={idx}>
+                                Артикул "{item.article}" встречается {item.count} раз: {item.examples.join(", ")}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Sales Quality */}
+                    <div>
+                      <h3 className="font-semibold mb-3">Продажи</h3>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="p-3 border rounded">
+                          <div className="text-2xl font-bold">{dataQuality.sales.total}</div>
+                          <div className="text-sm text-muted-foreground">Всего документов</div>
+                        </div>
+                        <div className="p-3 border rounded border-orange-200 bg-orange-50">
+                          <div className="text-2xl font-bold text-orange-600">
+                            {dataQuality.sales.withMissingData}
+                          </div>
+                          <div className="text-sm text-muted-foreground">С неполными данными</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Returns Quality */}
+                    <div>
+                      <h3 className="font-semibold mb-3">Возвраты</h3>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="p-3 border rounded">
+                          <div className="text-2xl font-bold">{dataQuality.returns.total}</div>
+                          <div className="text-sm text-muted-foreground">Всего документов</div>
+                        </div>
+                        <div className="p-3 border rounded border-orange-200 bg-orange-50">
+                          <div className="text-2xl font-bold text-orange-600">
+                            {dataQuality.returns.withMissingData}
+                          </div>
+                          <div className="text-sm text-muted-foreground">С неполными данными</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    Нажмите кнопку для загрузки отчета
+                  </div>
+                )}
+              </DialogContent>
+            </Dialog>
+          </div>
         </CardContent>
       </Card>
 

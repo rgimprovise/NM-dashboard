@@ -41,6 +41,7 @@ import { handleDemo } from "./routes/demo";
 import * as yandexRoutes from "./routes/yandex";
 import * as vkRoutes from "./routes/vk";
 import * as oneCRoutes from "./routes/oneC";
+import * as analyticsRoutes from "./routes/analytics";
 import { initTokenManager } from "./utils/vkTokenManager";
 
 // Function to load .env file manually (kept for createServer call)
@@ -142,6 +143,10 @@ export function createServer() {
   app.get("/api/1c/returns", oneCRoutes.getReturns);
   app.get("/api/1c/stock-turnover", oneCRoutes.getStockTurnover);
   app.get("/api/1c/categories", oneCRoutes.getCategories);
+
+  // Analytics routes
+  app.get("/api/analytics/funnel", analyticsRoutes.getFunnel);
+  app.get("/api/analytics/data-quality", analyticsRoutes.getDataQuality);
 
   return app;
 }

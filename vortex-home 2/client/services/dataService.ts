@@ -6,6 +6,12 @@ import {
   fetchOneCReturns,
   fetchOneCStockTurnover,
 } from "./api/oneCClient";
+import {
+  fetchFunnelSummary,
+  fetchDataQualityReport,
+  type FunnelSummary as AnalyticsFunnelSummary,
+  type DataQualityReport,
+} from "./api/analyticsClient";
 import { DashboardSummary, Campaign, Order, TopProduct, Region } from "@/types/dashboard";
 import {
   ProductSnapshot,
@@ -585,14 +591,23 @@ export class DataService {
   /**
    * Получить сквозную воронку: агрегированные данные из всех источников (VK, Yandex, 1C)
    * 
+   * Использует новый analytics API endpoint для получения агрегированных данных
+   * 
    * @param period - Период для анализа: "7d" | "30d" | "90d" | "ytd"
    * @returns FunnelSummary с агрегированными данными и KPI
    */
   async getUnifiedFunnelSummary(period: "7d" | "30d" | "90d" | "ytd"): Promise<FunnelSummary> {
-    const periodRange = getPeriodRange(period);
-    const periodLabel = periodRange.label;
-
     try {
+      // Используем новый analytics API endpoint
+      const summary = await fetchFunnelSummary(period);
+      return summary;
+    } catch (error) {
+      console.error("Error fetching unified funnel summary:", error);
+      // Fallback: используем старый подход, если новый API недоступен
+      const periodRange = getPeriodRange(period);
+      const periodLabel = periodRange.label;
+
+      try {
         // Параллельно загружаем данные из всех источников
         const [vkStats, yandexOrders, oneCSales] = await Promise.all([
           vkAPI.getStatistics(periodRange.dateFrom, periodRange.dateTo).catch(() => []),
@@ -600,92 +615,128 @@ export class DataService {
           fetchOneCSales().catch(() => []),
         ]);
 
-      // Агрегируем данные VK
-      const vkData = Array.isArray(vkStats) ? vkStats : [];
-      const vkAggregated = vkData.reduce(
-        (acc, stat: any) => {
-          acc.impressions += stat.shows || stat.impressions || 0;
-          acc.clicks += stat.clicks || 0;
-          acc.spend += stat.spent || stat.spend || 0;
-          return acc;
-        },
-        { impressions: 0, clicks: 0, spend: 0 }
-      );
+        // Агрегируем данные VK
+        const vkData = Array.isArray(vkStats) ? vkStats : [];
+        const vkAggregated = vkData.reduce(
+          (acc, stat: any) => {
+            acc.impressions += stat.shows || stat.impressions || 0;
+            acc.clicks += stat.clicks || 0;
+            acc.spend += stat.spent || stat.spend || 0;
+            return acc;
+          },
+          { impressions: 0, clicks: 0, spend: 0 }
+        );
 
-      // Агрегируем данные Yandex
-      const yandexAggregated = yandexOrders.reduce(
-        (acc, order: any) => {
-          acc.orders += 1;
-          acc.revenue += order.buyerTotal || order.total || order.itemsTotal || 0;
-          return acc;
-        },
-        { orders: 0, revenue: 0 }
-      );
+        // Агрегируем данные Yandex
+        const yandexAggregated = yandexOrders.reduce(
+          (acc, order: any) => {
+            acc.orders += 1;
+            acc.revenue += order.buyerTotal || order.total || order.itemsTotal || 0;
+            return acc;
+          },
+          { orders: 0, revenue: 0 }
+        );
 
-      // Фильтруем и агрегируем данные 1C по периоду
-      const oneCSalesFiltered = oneCSales.filter((sale) => {
-        try {
-          const saleDate = new Date(sale.date);
-          const fromDate = new Date(periodRange.dateFrom);
-          const toDate = new Date(periodRange.dateTo);
-          // Устанавливаем время на конец дня для toDate, чтобы включить весь день
-          toDate.setHours(23, 59, 59, 999);
-          return saleDate >= fromDate && saleDate <= toDate;
-        } catch {
-          return false;
-        }
-      });
+        // Фильтруем и агрегируем данные 1C по периоду
+        const oneCSalesFiltered = oneCSales.filter((sale) => {
+          try {
+            const saleDate = new Date(sale.date);
+            const fromDate = new Date(periodRange.dateFrom);
+            const toDate = new Date(periodRange.dateTo);
+            toDate.setHours(23, 59, 59, 999);
+            return saleDate >= fromDate && saleDate <= toDate;
+          } catch {
+            return false;
+          }
+        });
 
-      const oneCAggregated = oneCSalesFiltered.reduce(
-        (acc, sale) => {
-          acc.orders += 1; // Каждый документ = заказ
-          acc.revenue += typeof sale.revenue === "number" ? sale.revenue : parseFloat(String(sale.revenue || 0));
-          acc.margin = (acc.margin || 0) + (typeof sale.margin === "number" ? sale.margin : parseFloat(String(sale.margin || 0)));
-          return acc;
-        },
-        { orders: 0, revenue: 0, margin: 0 }
-      );
+        const oneCAggregated = oneCSalesFiltered.reduce(
+          (acc, sale) => {
+            acc.orders += 1;
+            acc.revenue += typeof sale.revenue === "number" ? sale.revenue : parseFloat(String(sale.revenue || 0));
+            acc.margin = (acc.margin || 0) + (typeof sale.margin === "number" ? sale.margin : parseFloat(String(sale.margin || 0)));
+            return acc;
+          },
+          { orders: 0, revenue: 0, margin: 0 }
+        );
 
-      // Рассчитываем KPI
-      const totalRevenue = yandexAggregated.revenue + oneCAggregated.revenue;
-      const totalOrders = yandexAggregated.orders + oneCAggregated.orders;
-      const totalAdSpend = vkAggregated.spend;
+        // Рассчитываем KPI
+        const totalRevenue = yandexAggregated.revenue + oneCAggregated.revenue;
+        const totalOrders = yandexAggregated.orders + oneCAggregated.orders;
+        const totalAdSpend = vkAggregated.spend;
 
-      const kpi = {
-        ctr: calcCtr(vkAggregated.impressions, vkAggregated.clicks),
-        cpc: calcCpc(vkAggregated.spend, vkAggregated.clicks),
-        cpm: calcCpm(vkAggregated.spend, vkAggregated.impressions),
-        roas: calcRoas(totalRevenue, totalAdSpend),
-        conversionRate: calcConversionRate(totalOrders, vkAggregated.clicks),
-        aov: calcAov(totalRevenue, totalOrders),
-      };
+        const kpi = {
+          ctr: calcCtr(vkAggregated.impressions, vkAggregated.clicks),
+          cpc: calcCpc(vkAggregated.spend, vkAggregated.clicks),
+          cpm: calcCpm(vkAggregated.spend, vkAggregated.impressions),
+          roas: calcRoas(totalRevenue, totalAdSpend),
+          conversionRate: calcConversionRate(totalOrders, vkAggregated.clicks),
+          aov: calcAov(totalRevenue, totalOrders),
+        };
 
-      return {
-        periodLabel,
-        vk: vkAggregated,
-        yandex: yandexAggregated,
-        oneC: {
-          orders: oneCAggregated.orders,
-          revenue: oneCAggregated.revenue,
-          margin: oneCAggregated.margin > 0 ? oneCAggregated.margin : undefined,
-        },
-        kpi,
-      };
+        return {
+          periodLabel,
+          vk: vkAggregated,
+          yandex: yandexAggregated,
+          oneC: {
+            orders: oneCAggregated.orders,
+            revenue: oneCAggregated.revenue,
+            margin: oneCAggregated.margin > 0 ? oneCAggregated.margin : undefined,
+          },
+          kpi,
+        };
+      } catch (fallbackError) {
+        console.error("Fallback funnel summary also failed:", fallbackError);
+        // Возвращаем пустую структуру в случае ошибки
+        return {
+          periodLabel,
+          vk: { impressions: 0, clicks: 0, spend: 0 },
+          yandex: { orders: 0, revenue: 0 },
+          oneC: { orders: 0, revenue: 0 },
+          kpi: {
+            ctr: 0,
+            cpc: 0,
+            cpm: 0,
+            roas: 0,
+            conversionRate: 0,
+            aov: 0,
+          },
+        };
+      }
+    }
+  }
+
+  /**
+   * Получить отчет о качестве данных 1C
+   * 
+   * @returns DataQualityReport с анализом качества данных
+   */
+  async getOneCDataQuality(): Promise<DataQualityReport> {
+    try {
+      return await fetchDataQualityReport();
     } catch (error) {
-      console.error("Error fetching unified funnel summary:", error);
-      // Возвращаем пустую структуру в случае ошибки
+      console.error("Error fetching data quality report:", error);
+      // Возвращаем пустой отчет в случае ошибки
       return {
-        periodLabel,
-        vk: { impressions: 0, clicks: 0, spend: 0 },
-        yandex: { orders: 0, revenue: 0 },
-        oneC: { orders: 0, revenue: 0 },
-        kpi: {
-          ctr: 0,
-          cpc: 0,
-          cpm: 0,
-          roas: 0,
-          conversionRate: 0,
-          aov: 0,
+        products: {
+          total: 0,
+          missingArticleCount: 0,
+          missingPriceCount: 0,
+          zeroOrNegativeStockCount: 0,
+          duplicateArticleCount: 0,
+          examples: {
+            missingArticle: [],
+            missingPrice: [],
+            duplicateArticles: [],
+          },
+        },
+        sales: {
+          total: 0,
+          withMissingData: 0,
+        },
+        returns: {
+          total: 0,
+          withMissingData: 0,
         },
       };
     }

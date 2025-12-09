@@ -15,6 +15,13 @@ import {
   OneCReturnRow,
   OneCCategoryRow,
 } from "../../shared/types/oneC";
+import {
+  DimProduct,
+  DimCategory,
+  Fact1cSale,
+  Fact1cMargin,
+  FactStockSnapshot,
+} from "../../shared/types/dataModel";
 
 // Пути к файлам (относительно корня проекта)
 const DATA_DIR = path.resolve(process.cwd(), "data", "1c");
@@ -457,5 +464,193 @@ export async function loadOneCCategories(forceReload: boolean = false): Promise<
 
   cache.categories = categories;
   return categories;
+}
+
+// ============================================
+// НОРМАЛИЗАЦИЯ В STAR-SCHEMA
+// ============================================
+
+/**
+ * Генерация стабильного ID для товара на основе артикула и наименования
+ */
+function generateProductId(article: string, name: string, oneCCode?: string): string {
+  // Приоритет: oneCCode > article > hash(name)
+  if (oneCCode && oneCCode.trim()) {
+    return `1c_${oneCCode.trim()}`;
+  }
+  if (article && article.trim()) {
+    return `1c_${article.trim()}`;
+  }
+  // Fallback: хэш от имени
+  const hash = name.split("").reduce((acc, char) => {
+    return ((acc << 5) - acc) + char.charCodeAt(0) | 0;
+  }, 0);
+  return `1c_hash_${Math.abs(hash)}`;
+}
+
+/**
+ * Генерация стабильного ID для категории на основе названия
+ */
+function generateCategoryId(name: string): string {
+  // Создаем slug из названия
+  const slug = name
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-zа-я0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  return `cat_${slug}`;
+}
+
+/**
+ * Преобразование OneCProductRow в DimProduct
+ */
+export async function normalizeOneCProductsToDimProducts(
+  forceReload: boolean = false
+): Promise<DimProduct[]> {
+  const products = await loadOneCProducts(forceReload);
+  const categories = await loadOneCCategories(forceReload);
+  
+  // Создаем мапу категорий по названию
+  const categoryMap = new Map<string, string>();
+  categories.forEach(cat => {
+    const catId = generateCategoryId(cat.name);
+    categoryMap.set(cat.name.toLowerCase().trim(), catId);
+  });
+
+  return products.map(product => {
+    const productId = generateProductId(product.article, product.name);
+    
+    // Пытаемся найти категорию (пока упрощенно, можно улучшить маппинг)
+    let categoryId: string | undefined;
+    // TODO: улучшить маппинг категорий, если в products.xlsx есть поле категории
+    
+    return {
+      id: productId,
+      name: product.name,
+      article: product.article || undefined,
+      oneCCode: product.article || undefined, // Используем артикул как код 1С
+      categoryId,
+    };
+  });
+}
+
+/**
+ * Преобразование OneCSalesMarginRow в Fact1cSale и Fact1cMargin
+ */
+export async function normalizeOneCSalesToFacts(
+  forceReload: boolean = false
+): Promise<{ sales: Fact1cSale[]; margins: Fact1cMargin[] }> {
+  const salesMargin = await loadOneCSalesMargin(forceReload);
+  const products = await loadOneCProducts(forceReload);
+  
+  // Создаем мапу товаров по артикулу для поиска productId
+  const productMap = new Map<string, string>();
+  products.forEach(product => {
+    if (product.article) {
+      const productId = generateProductId(product.article, product.name);
+      productMap.set(product.article.toLowerCase().trim(), productId);
+    }
+  });
+
+  const sales: Fact1cSale[] = [];
+  const margins: Fact1cMargin[] = [];
+
+  salesMargin.forEach(row => {
+    const saleId = `1c_sale_${row.documentNumber}_${row.date}`;
+    
+    // Пытаемся найти productId (пока undefined, так как в sales_margin нет артикула)
+    // TODO: если в sales_margin.xlsx появится артикул/код товара, добавить маппинг
+    
+    const sale: Fact1cSale = {
+      saleId,
+      externalOrderId: row.documentNumber,
+      date: row.date,
+      productId: undefined, // Будет заполнено при наличии артикула в данных
+      warehouseId: undefined,
+      quantity: 1, // По умолчанию, если нет детализации
+      price: row.revenue,
+      revenue: row.revenue,
+    };
+
+    const margin: Fact1cMargin = {
+      saleId,
+      productId: undefined, // Будет заполнено при наличии артикула в данных
+      cost: row.cost,
+      margin: row.margin,
+    };
+
+    sales.push(sale);
+    margins.push(margin);
+  });
+
+  return { sales, margins };
+}
+
+/**
+ * Преобразование OneCProductRow и OneCStockTurnoverRow в FactStockSnapshot
+ */
+export async function normalizeOneCStockToFactSnapshots(
+  forceReload: boolean = false
+): Promise<FactStockSnapshot[]> {
+  const products = await loadOneCProducts(forceReload);
+  const stockTurnover = await loadOneCStockTurnover(forceReload);
+  const today = new Date().toISOString().split("T")[0];
+
+  const snapshots: FactStockSnapshot[] = [];
+
+  // Используем products.xlsx как основной источник остатков
+  products.forEach(product => {
+    const productId = generateProductId(product.article, product.name);
+    
+    snapshots.push({
+      snapshotDate: today,
+      productId,
+      warehouseId: undefined, // Пока не различаем склады
+      stockQty: product.stock,
+      stockValue: product.retailPrice > 0 ? product.stock * product.retailPrice : undefined,
+    });
+  });
+
+  // Дополняем данными из stock_turnover.xlsx (используем closingQty)
+  const turnoverMap = new Map<string, number>();
+  stockTurnover.forEach(item => {
+    if (item.article) {
+      turnoverMap.set(item.article.toLowerCase().trim(), item.closingQty);
+    }
+  });
+
+  // Обновляем snapshots данными из turnover, если есть
+  snapshots.forEach(snapshot => {
+    const product = products.find(p => {
+      const pid = generateProductId(p.article, p.name);
+      return pid === snapshot.productId;
+    });
+    if (product && product.article) {
+      const turnoverQty = turnoverMap.get(product.article.toLowerCase().trim());
+      if (turnoverQty !== undefined) {
+        snapshot.stockQty = turnoverQty;
+        if (product.retailPrice > 0) {
+          snapshot.stockValue = turnoverQty * product.retailPrice;
+        }
+      }
+    }
+  });
+
+  return snapshots;
+}
+
+/**
+ * Преобразование OneCCategoryRow в DimCategory
+ */
+export async function normalizeOneCCategoriesToDimCategories(
+  forceReload: boolean = false
+): Promise<DimCategory[]> {
+  const categories = await loadOneCCategories(forceReload);
+
+  return categories.map(cat => ({
+    id: generateCategoryId(cat.name),
+    name: cat.name,
+    parentId: undefined, // Пока нет иерархии
+  }));
 }
 
