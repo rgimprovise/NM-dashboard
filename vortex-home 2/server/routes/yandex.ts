@@ -2,13 +2,21 @@ import { RequestHandler } from "express";
 import { cacheManager, CACHE_TTL } from "../cache/cacheManager";
 
 const YANDEX_BASE_URL = "https://api.partner.market.yandex.ru";
-const YANDEX_TOKEN = process.env.YANDEX_TOKEN;
-const YANDEX_BUSINESS_ID = process.env.YANDEX_BUSINESS_ID;
 
-// Все Campaign IDs из всех магазинов
-const YANDEX_CAMPAIGN_IDS = (process.env.YANDEX_CAMPAIGN_IDS || "21621656")
-  .split(",")
-  .map(id => id.trim());
+// Функции для получения переменных окружения (читаются динамически, после загрузки dotenv)
+function getYandexToken(): string | undefined {
+  return process.env.YANDEX_TOKEN;
+}
+
+function getYandexBusinessId(): string | undefined {
+  return process.env.YANDEX_BUSINESS_ID;
+}
+
+function getYandexCampaignIds(): string[] {
+  return (process.env.YANDEX_CAMPAIGN_IDS || "21621656")
+    .split(",")
+    .map(id => id.trim());
+}
 
 interface YandexResponse<T> {
   success: boolean;
@@ -20,12 +28,17 @@ async function yandexFetch<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
+  const token = getYandexToken();
+  if (!token) {
+    throw new Error("Yandex token not configured");
+  }
+  
   const url = `${YANDEX_BASE_URL}${endpoint}`;
   
   const response = await fetch(url, {
     ...options,
     headers: {
-      "Api-Key": YANDEX_TOKEN || "",
+      "Api-Key": token,
       "Content-Type": "application/json",
       ...options.headers,
     },
@@ -46,7 +59,8 @@ export const getOrders: RequestHandler = async (req, res) => {
   try {
     const { date_from, date_to } = req.query;
 
-    if (!YANDEX_TOKEN) {
+    const token = getYandexToken();
+    if (!token) {
       console.warn("Yandex token missing - using mock data");
       return res.json({
         success: true,
@@ -72,8 +86,9 @@ export const getOrders: RequestHandler = async (req, res) => {
 
     // Запрашиваем заказы со ВСЕХ кампаний с пагинацией
     const allOrders: any[] = [];
+    const campaignIds = getYandexCampaignIds();
     
-    for (const campaignId of YANDEX_CAMPAIGN_IDS) {
+    for (const campaignId of campaignIds) {
       try {
         let page = 1;
         let hasMore = true;
@@ -124,7 +139,7 @@ export const getOrders: RequestHandler = async (req, res) => {
       }
     }
     
-    console.log(`✅ Yandex: всего получено ${allOrders.length} заказов из ${YANDEX_CAMPAIGN_IDS.length} кампаний`);
+    console.log(`✅ Yandex: всего получено ${allOrders.length} заказов из ${campaignIds.length} кампаний`);
     
     // Сохраняем в кэш
     cacheManager.set(cacheKey, allOrders, CACHE_TTL.YANDEX_ORDERS);
@@ -146,7 +161,8 @@ export const getOrders: RequestHandler = async (req, res) => {
 
 export const getProducts: RequestHandler = async (req, res) => {
   try {
-    if (!YANDEX_TOKEN) {
+    const token = getYandexToken();
+    if (!token) {
       console.warn("Yandex token missing - using mock data");
       return res.json({
         success: true,
@@ -170,9 +186,10 @@ export const getProducts: RequestHandler = async (req, res) => {
     console.log(`❌ Cache MISS: ${cacheKey}`);
 
     const allProducts: any[] = [];
+    const campaignIds = getYandexCampaignIds();
     
     // Получаем товары со ВСЕХ кампаний
-    for (const campaignId of YANDEX_CAMPAIGN_IDS) {
+    for (const campaignId of campaignIds) {
       try {
         const stocksEndpoint = `/campaigns/${campaignId}/offers/stocks`;
         
@@ -206,7 +223,7 @@ export const getProducts: RequestHandler = async (req, res) => {
       }
     }
     
-    console.log(`✅ Yandex: всего получено ${allProducts.length} товаров из ${YANDEX_CAMPAIGN_IDS.length} кампаний`);
+    console.log(`✅ Yandex: всего получено ${allProducts.length} товаров из ${campaignIds.length} кампаний`);
     
     // Сохраняем в кэш
     cacheManager.set(cacheKey, allProducts, CACHE_TTL.YANDEX_PRODUCTS);
@@ -228,7 +245,8 @@ export const getProducts: RequestHandler = async (req, res) => {
 
 export const getStocks: RequestHandler = async (req, res) => {
   try {
-    if (!YANDEX_TOKEN) {
+    const token = getYandexToken();
+    if (!token) {
       console.warn("Yandex token missing - using mock data");
       return res.json({
         success: true,
@@ -249,8 +267,9 @@ export const getStocks: RequestHandler = async (req, res) => {
     }
 
     const allStocks: any[] = [];
+    const campaignIds = getYandexCampaignIds();
     
-    for (const campaignId of YANDEX_CAMPAIGN_IDS) {
+    for (const campaignId of campaignIds) {
       try {
         const endpoint = `/campaigns/${campaignId}/offers/stocks`;
         const data = await yandexFetch<{ result: { warehouses: any[] } }>(endpoint, {
@@ -300,7 +319,8 @@ export const getOrderStats: RequestHandler = async (req, res) => {
   try {
     const { date_from, date_to } = req.query;
 
-    if (!YANDEX_TOKEN) {
+    const token = getYandexToken();
+    if (!token) {
       return res.status(400).json({
         success: false,
         error: "Yandex API configuration missing",
@@ -308,8 +328,9 @@ export const getOrderStats: RequestHandler = async (req, res) => {
     }
 
     const allStats: any[] = [];
+    const campaignIds = getYandexCampaignIds();
     
-    for (const campaignId of YANDEX_CAMPAIGN_IDS) {
+    for (const campaignId of campaignIds) {
       try {
         const endpoint = `/campaigns/${campaignId}/stats/orders`;
         
@@ -348,7 +369,9 @@ export const getOrderStats: RequestHandler = async (req, res) => {
 // Новый endpoint для получения информации о кампаниях
 export const getCampaigns: RequestHandler = async (req, res) => {
   try {
-    if (!YANDEX_TOKEN) {
+    const token = getYandexToken();
+    
+    if (!token) {
       return res.status(400).json({
         success: false,
         error: "Yandex API configuration missing",
@@ -368,8 +391,9 @@ export const getCampaigns: RequestHandler = async (req, res) => {
     }
 
     const campaigns: any[] = [];
+    const campaignIds = getYandexCampaignIds();
     
-    for (const campaignId of YANDEX_CAMPAIGN_IDS) {
+    for (const campaignId of campaignIds) {
       try {
         const endpoint = `/campaigns/${campaignId}`;
         const data = await yandexFetch<{ campaign: any }>(endpoint);

@@ -6,6 +6,7 @@ import {
   TrendingUp,
   ShoppingCart,
   Package,
+  Warehouse,
   Upload,
   FileText,
   Settings,
@@ -42,6 +43,12 @@ const navigationItems = [
     href: "/products",
     icon: Package,
     description: "Остатки и товары",
+  },
+  {
+    name: "Склад",
+    href: "/stock",
+    icon: Warehouse,
+    description: "Склад 1С и оборачиваемость",
   },
   {
     name: "Загрузка 1C",

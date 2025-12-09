@@ -3,7 +3,11 @@ import { ensureValidToken } from "../utils/vkTokenManager";
 import { cacheManager, CACHE_TTL } from "../cache/cacheManager";
 
 const VK_BASE_URL = "https://ads.vk.com/api/v2";
-const VK_ACCOUNT_ID = process.env.VK_ACCOUNT_ID;
+
+// Функция для получения VK_ACCOUNT_ID (читается динамически)
+function getVKAccountId(): string | undefined {
+  return process.env.VK_ACCOUNT_ID;
+}
 
 async function vkFetch<T>(
   endpoint: string,

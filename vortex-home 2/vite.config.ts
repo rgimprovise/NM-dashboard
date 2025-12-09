@@ -1,3 +1,35 @@
+// Load environment variables BEFORE importing anything else
+// Use fs to manually parse .env file (works in both CommonJS and ES modules)
+let envLoaded = false;
+try {
+  if (typeof process !== 'undefined' && process.env) {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const fs = require("fs");
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const path = require("path");
+    
+    const envPath = path.resolve(process.cwd(), ".env");
+    if (fs.existsSync(envPath)) {
+      const envContent = fs.readFileSync(envPath, "utf-8");
+      envContent.split("\n").forEach((line: string) => {
+        const trimmed = line.trim();
+        if (trimmed && !trimmed.startsWith("#") && trimmed.includes("=")) {
+          const [key, ...valueParts] = trimmed.split("=");
+          if (key && valueParts.length > 0) {
+            let value = valueParts.join("=").trim();
+            value = value.replace(/^["']|["']$/g, "");
+            process.env[key.trim()] = value;
+          }
+        }
+      });
+      envLoaded = true;
+      console.log("✅ vite.config.ts: .env loaded manually");
+    }
+  }
+} catch (error) {
+  console.warn("⚠️ vite.config.ts: Could not load .env:", error);
+}
+
 import { defineConfig, Plugin } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
@@ -92,40 +124,55 @@ function expressPlugin(): Plugin {
     name: "express-plugin",
     apply: "serve", // Only apply during development (serve mode)
     configureServer(server) {
+      console.log('🔧 Express plugin: configureServer called');
+      console.log('🔧 ENABLE_VITE_SERVER:', process.env.ENABLE_VITE_SERVER);
+      
       // Early return for Builder.io and browser-like environments
-      // Check multiple conditions to ensure we skip in Builder.io
       if (typeof window !== 'undefined') {
-        return; // Browser environment - skip server
+        console.log('⚠️ Express plugin: Browser environment detected, skipping');
+        return;
       }
       
       if (typeof process === 'undefined' || !process.env) {
-        return; // Not Node.js - skip server
+        console.log('⚠️ Express plugin: Not Node.js environment, skipping');
+        return;
       }
 
-      // Check for Builder.io specific environment variables or user agent
+      // Check for Builder.io specific environment variables
       if (process.env.BUILDER_IO === 'true' || 
           (typeof navigator !== 'undefined' && navigator.userAgent?.includes('Builder'))) {
-        return; // Builder.io detected - skip server
+        console.log('⚠️ Express plugin: Builder.io detected, skipping');
+        return;
       }
 
-      // Only load server in proper Node.js local development environment
-      // Use setTimeout to defer loading and avoid blocking Vite initialization
-      setTimeout(() => {
+      // Load server with proper error handling
+      // Use require for synchronous loading in Node.js context
+      try {
+        console.log('🔄 Express plugin: Loading server module...');
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const serverModule = require("./server/index.ts");
+        const { createServer } = serverModule;
+        const app = createServer();
+        server.middlewares.use(app);
+        console.log('✅ Express server middleware loaded and registered');
+      } catch (error) {
+        console.error('❌ Express plugin: Error loading server:', error);
+        // Try async import as fallback
         import("./server/index.ts")
           .then((module) => {
             try {
               const { createServer } = module;
               const app = createServer();
               server.middlewares.use(app);
-              console.log('✅ Express server middleware loaded');
+              console.log('✅ Express server middleware loaded (async fallback)');
             } catch (err) {
-              // Silent fail - don't log to avoid Builder.io connection issues
+              console.error('❌ Express plugin: Error in async fallback:', err);
             }
           })
-          .catch(() => {
-            // Silent fail - frontend-only mode is acceptable
+          .catch((err) => {
+            console.error('❌ Express plugin: Async import also failed:', err);
           });
-      }, 100); // Small delay to ensure Vite is ready
+      }
     },
   };
 }

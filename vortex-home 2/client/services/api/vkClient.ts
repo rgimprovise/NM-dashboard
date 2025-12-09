@@ -91,27 +91,34 @@ export class VKAdsAPI {
     dateFrom: string,
     dateTo: string,
     campaignIds?: number[]
-  ): Promise<VKStatistic[]> {
+  ): Promise<VKStatistic[] | any> {
     try {
-      const body: any = {
+      // Используем GET запрос с query параметрами (как реализовано на сервере)
+      const params = new URLSearchParams({
         date_from: dateFrom,
         date_to: dateTo,
-        dimensions: ["date", "campaign_id"],
-        metrics: ["shows", "clicks", "spent", "conversions"],
-      };
-
-      if (campaignIds && campaignIds.length > 0) {
-        body.filter = {
-          campaign_ids: campaignIds,
-        };
-      }
-
-      const data = await this.fetchAPI<VKStatistic[]>("/statistics", {
-        method: "POST",
-        body: JSON.stringify(body),
       });
 
-      return data || [];
+      const endpoint = `/statistics?${params.toString()}`;
+      const response = await fetch(`${this.baseUrl}${endpoint}`, {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status} ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      
+      // Сервер возвращает { success: true, data: [...], total: {...} }
+      if (result.success && result.data) {
+        return result.data; // Возвращаем массив статистики
+      }
+      
+      // Если формат другой, возвращаем весь объект
+      return result.data || result || [];
     } catch (error) {
       console.error("Error fetching statistics:", error);
       return [];

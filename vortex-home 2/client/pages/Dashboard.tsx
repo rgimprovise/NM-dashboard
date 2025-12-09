@@ -15,9 +15,12 @@ import {
   Loader,
   Info,
 } from "lucide-react";
-import { dataService, getPeriodParams, type PeriodParams } from "@/services/dataService";
+import { dataService, getPeriodParams, type PeriodParams, type FunnelSummary } from "@/services/dataService";
 import { DashboardSummary, RevenueChartPoint, TopProduct, Region } from "@/types/dashboard";
+import { SalesSummaryByManager } from "../../shared/types/oneC";
 import { mockRevenueChartData, mockRegions } from "@/lib/mockData";
+import { calcRoas, calcRevenueShare, calcAov } from "../../shared/utils/metrics";
+import { cn } from "@/lib/utils";
 
 export default function Dashboard() {
   const [period, setPeriod] = useState("30d");
@@ -26,6 +29,21 @@ export default function Dashboard() {
   const [regions, setRegions] = useState<Region[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // 1C Data state
+  const [oneCSalesSummary, setOneCSalesSummary] = useState<{
+    totalRevenue: number;
+    totalMargin: number;
+    totalReturns: number;
+    netRevenue: number;
+    byManager: SalesSummaryByManager[];
+  } | null>(null);
+  const [oneCProductCount, setOneCProductCount] = useState<number>(0);
+  const [oneCLoading, setOneCLoading] = useState(true);
+  
+  // Executive Overview / Funnel Summary state
+  const [funnelSummary, setFunnelSummary] = useState<FunnelSummary | null>(null);
+  const [funnelLoading, setFunnelLoading] = useState(true);
 
   // Generate chart data based on period - sorted by date
   const generateChartData = (periodParams: PeriodParams): RevenueChartPoint[] => {
@@ -48,7 +66,7 @@ export default function Dashboard() {
         ad_spend: adSpend,
         orders: 4 + Math.floor(Math.random() * 8),
         clicks: 350 + Math.floor(Math.random() * 400),
-        roas: adSpend > 0 ? revenue / adSpend : 0,
+        roas: calcRoas(revenue, adSpend),
       });
     }
     // Sort by date ascending
@@ -91,8 +109,8 @@ export default function Dashboard() {
               region,
               orders: stats.orders,
               revenue: stats.revenue,
-              share: totalRevenue > 0 ? (stats.revenue / totalRevenue) * 100 : 0,
-              avg_order_value: stats.orders > 0 ? stats.revenue / stats.orders : 0,
+              share: calcRevenueShare(stats.revenue, totalRevenue),
+              avg_order_value: calcAov(stats.revenue, stats.orders),
             }))
             .sort((a, b) => b.revenue - a.revenue)
             .slice(0, 6);
@@ -113,6 +131,55 @@ export default function Dashboard() {
 
     loadData();
   }, [period]);
+
+  // Load 1C data on mount
+  useEffect(() => {
+    const loadOneCData = async () => {
+      try {
+        setOneCLoading(true);
+        const [salesSummary, products] = await Promise.all([
+          dataService.getOneCSalesSummary(),
+          dataService.getOneCProductSnapshot(),
+        ]);
+
+        setOneCSalesSummary(salesSummary);
+        setOneCProductCount(products.length);
+      } catch (err) {
+        console.error("Error loading 1C data:", err);
+        // Set defaults on error
+        setOneCSalesSummary({
+          totalRevenue: 0,
+          totalMargin: 0,
+          totalReturns: 0,
+          netRevenue: 0,
+          byManager: [],
+        });
+        setOneCProductCount(0);
+      } finally {
+        setOneCLoading(false);
+      }
+    };
+
+    loadOneCData();
+  }, []);
+
+  // Load Executive Overview / Funnel Summary data
+  useEffect(() => {
+    const loadFunnelSummary = async () => {
+      try {
+        setFunnelLoading(true);
+        const summary = await dataService.getUnifiedFunnelSummary("30d");
+        setFunnelSummary(summary);
+      } catch (err) {
+        console.error("Error loading funnel summary:", err);
+        setFunnelSummary(null);
+      } finally {
+        setFunnelLoading(false);
+      }
+    };
+
+    loadFunnelSummary();
+  }, []);
 
   const handlePeriodChange = (newPeriod: string) => {
     setPeriod(newPeriod);
@@ -205,6 +272,94 @@ export default function Dashboard() {
           </AlertDescription>
         </Alert>
       )}
+
+      {/* Executive Overview / Общий обзор */}
+      {(funnelLoading || oneCLoading) ? (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-bold text-foreground">Общий обзор</h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                Ключевые бизнес-метрики за 30 дней
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center justify-center h-32">
+            <Loader className="w-6 h-6 animate-spin text-primary" />
+          </div>
+        </div>
+      ) : funnelSummary && oneCSalesSummary ? (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-bold text-foreground">Общий обзор</h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                Ключевые бизнес-метрики за 30 дней
+              </p>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+            {/* Чистая выручка 1С */}
+            <KPICard
+              title="Чистая выручка 1С"
+              value={`${(oneCSalesSummary.netRevenue / 1000000).toFixed(2)}M`}
+              unit="₽"
+              icon={<DollarSign className="w-5 h-5" />}
+              className={cn(
+                oneCSalesSummary.netRevenue <= 0 && "border-orange-200 bg-orange-50"
+              )}
+            />
+            
+            {/* Валовая прибыль 1С */}
+            <KPICard
+              title="Валовая прибыль 1С"
+              value={`${(oneCSalesSummary.totalMargin / 1000000).toFixed(2)}M`}
+              unit="₽"
+              icon={<TrendingUp className="w-5 h-5" />}
+              className={cn(
+                oneCSalesSummary.totalRevenue > 0 && 
+                (oneCSalesSummary.totalMargin / oneCSalesSummary.totalRevenue) * 100 < 30 &&
+                "border-red-200 bg-red-50"
+              )}
+            />
+            
+            {/* Расходы на рекламу VK */}
+            <KPICard
+              title="Расходы на рекламу VK"
+              value={`${(funnelSummary.vk.spend / 1000).toFixed(0)}K`}
+              unit="₽"
+              icon={<Zap className="w-5 h-5" />}
+            />
+            
+            {/* ROAS */}
+            <KPICard
+              title="ROAS"
+              value={funnelSummary.kpi.roas.toFixed(2)}
+              icon={<Target className="w-5 h-5" />}
+              className={cn(
+                funnelSummary.kpi.roas < 3 && "border-red-200 bg-red-50"
+              )}
+            />
+            
+            {/* Конверсия клики → заказы */}
+            <KPICard
+              title="Конверсия"
+              value={funnelSummary.kpi.conversionRate.toFixed(2)}
+              unit="%"
+              icon={<BarChart3 className="w-5 h-5" />}
+            />
+            
+            {/* Средний чек (AOV) */}
+            <KPICard
+              title="Средний чек"
+              value={`${(funnelSummary.kpi.aov / 1000).toFixed(1)}K`}
+              unit="₽"
+              icon={<ShoppingCart className="w-5 h-5" />}
+            />
+          </div>
+        </div>
+      ) : null}
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -401,6 +556,118 @@ export default function Dashboard() {
           </div>
         </CardContent>
       </Card>
+
+      {/* 1C Basic Metrics Section */}
+      <div className="space-y-4">
+        <div>
+          <h2 className="text-2xl font-bold text-foreground">1С · Базовые показатели</h2>
+          <p className="text-muted-foreground mt-1">
+            Показатели из системы 1С (продажи, возвраты, склад)
+          </p>
+        </div>
+
+        {oneCLoading ? (
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-center py-8">
+                <Loader className="w-6 h-6 animate-spin text-primary mr-3" />
+                <p className="text-muted-foreground">Загрузка данных 1С...</p>
+              </div>
+            </CardContent>
+          </Card>
+        ) : oneCSalesSummary ? (
+          <>
+            {/* 1C KPI Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+              <KPICard
+                title="Выручка 1С"
+                value={`${(oneCSalesSummary.totalRevenue / 1000000).toFixed(2)}M`}
+                unit="₽"
+                icon={<DollarSign className="w-5 h-5" />}
+              />
+              <KPICard
+                title="Возвраты"
+                value={`${(oneCSalesSummary.totalReturns / 1000).toFixed(0)}K`}
+                unit="₽"
+                icon={<AlertCircle className="w-5 h-5" />}
+              />
+              <KPICard
+                title="Чистая выручка"
+                value={`${(oneCSalesSummary.netRevenue / 1000000).toFixed(2)}M`}
+                unit="₽"
+                icon={<TrendingUp className="w-5 h-5" />}
+              />
+              <KPICard
+                title="Валовая прибыль"
+                value={`${(oneCSalesSummary.totalMargin / 1000000).toFixed(2)}M`}
+                unit="₽"
+                icon={<BarChart3 className="w-5 h-5" />}
+              />
+              <KPICard
+                title="Кол-во SKU в базе"
+                value={oneCProductCount}
+                icon={<ShoppingCart className="w-5 h-5" />}
+              />
+            </div>
+
+            {/* Top Managers Table */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Топ менеджеров по выручке и марже</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {oneCSalesSummary.byManager.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left py-3 px-4 font-semibold">Менеджер</th>
+                          <th className="text-right py-3 px-4 font-semibold">Выручка</th>
+                          <th className="text-right py-3 px-4 font-semibold">Маржа</th>
+                          <th className="text-right py-3 px-4 font-semibold">Маржа %</th>
+                          <th className="text-right py-3 px-4 font-semibold">Документов</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {oneCSalesSummary.byManager.slice(0, 10).map((manager, idx) => (
+                          <tr key={idx} className="border-b hover:bg-muted">
+                            <td className="py-3 px-4 font-medium">{manager.manager}</td>
+                            <td className="text-right py-3 px-4">
+                              ₽{(manager.totalRevenue / 1000).toFixed(0)}K
+                            </td>
+                            <td className="text-right py-3 px-4">
+                              ₽{(manager.totalMargin / 1000).toFixed(0)}K
+                            </td>
+                            <td className="text-right py-3 px-4">
+                              <Badge variant="secondary">
+                                {manager.averageMarginPercent.toFixed(1)}%
+                              </Badge>
+                            </td>
+                            <td className="text-right py-3 px-4">{manager.documentCount}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    Нет данных о менеджерах
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </>
+        ) : (
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <AlertCircle className="w-5 h-5 text-muted-foreground" />
+                <p className="text-muted-foreground">Не удалось загрузить данные 1С</p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
     </div>
   );
 }

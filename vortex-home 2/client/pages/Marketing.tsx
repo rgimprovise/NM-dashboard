@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
+import KPICard from "@/components/dashboard/KPICard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -10,60 +10,83 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { mockCampaigns } from "@/lib/mockData";
-import { Search, AlertCircle, Loader, Info } from "lucide-react";
-import { dataService } from "@/services/dataService";
-import type { Campaign } from "@/types/dashboard";
+import {
+  TrendingUp,
+  MousePointerClick,
+  Eye,
+  DollarSign,
+  Target,
+  BarChart3,
+  Loader,
+  Info,
+} from "lucide-react";
+import { dataService, type FunnelSummary } from "@/services/dataService";
+import { vkAPI } from "@/services/api/vkClient";
+import type { VKStatistic } from "@/services/api/vkClient";
+import { getPeriodRange } from "../../shared/utils/periods";
 
 export default function Marketing() {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [sortBy, setSortBy] = useState("spent");
-  const [selectedCampaigns, setSelectedCampaigns] = useState<number[]>([]);
-  const [period, setPeriod] = useState("30d");
-  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [period, setPeriod] = useState<"7d" | "30d" | "90d" | "ytd">("30d");
+  const [source, setSource] = useState<"vk" | "vk+yandex" | "all">("all");
+  const [funnelSummary, setFunnelSummary] = useState<FunnelSummary | null>(null);
+  const [vkDailyStats, setVkDailyStats] = useState<VKStatistic[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const loadCampaigns = async () => {
+    const loadData = async () => {
       try {
         setLoading(true);
         setError(null);
-        const data = await dataService.getCampaigns(period);
-        setCampaigns(data);
+
+        const periodRange = getPeriodRange(period);
+
+        // Загружаем данные параллельно
+        const [funnel, vkStats] = await Promise.all([
+          dataService.getUnifiedFunnelSummary(period).catch(() => null),
+          vkAPI.getStatistics(periodRange.dateFrom, periodRange.dateTo).catch(() => []),
+        ]);
+
+        setFunnelSummary(funnel);
+        
+        // Обрабатываем VK статистику - группируем по дням
+        const statsArray = Array.isArray(vkStats) ? vkStats : [];
+        const dailyStatsMap = new Map<string, { shows: number; clicks: number; spent: number }>();
+        
+        statsArray.forEach((stat: any) => {
+          const date = stat.date || stat.day || new Date().toISOString().split("T")[0];
+          const existing = dailyStatsMap.get(date) || { shows: 0, clicks: 0, spent: 0 };
+          dailyStatsMap.set(date, {
+            shows: existing.shows + (stat.shows || stat.impressions || 0),
+            clicks: existing.clicks + (stat.clicks || 0),
+            spent: existing.spent + (stat.spent || stat.spend || 0),
+          });
+        });
+
+        // Преобразуем в массив и сортируем по дате
+        const dailyStats: VKStatistic[] = Array.from(dailyStatsMap.entries())
+          .map(([date, data]) => ({
+            date,
+            campaign_id: 0,
+            shows: data.shows,
+            clicks: data.clicks,
+            spent: data.spent,
+          }))
+          .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+        setVkDailyStats(dailyStats);
       } catch (err) {
-        const message = err instanceof Error ? err.message : "Failed to load campaigns";
+        const message = err instanceof Error ? err.message : "Ошибка загрузки данных";
         setError(message);
         console.error("Marketing error:", err);
-        // Fallback to mock data
-        setCampaigns(mockCampaigns);
       } finally {
         setLoading(false);
       }
     };
 
-    loadCampaigns();
+    loadData();
   }, [period]);
-
-  const filteredCampaigns = campaigns.filter((c) => {
-    const matchesSearch = c.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === "all" || c.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
-
-  const sortedCampaigns = [...filteredCampaigns].sort((a, b) => {
-    if (sortBy === "spent") {
-      return b.spent - a.spent;
-    } else if (sortBy === "roas") {
-      return (b.statistics?.roas || 0) - (a.statistics?.roas || 0);
-    } else if (sortBy === "revenue") {
-      return (b.statistics?.revenue || 0) - (a.statistics?.revenue || 0);
-    }
-    return 0;
-  });
 
   if (loading) {
     return (
@@ -72,14 +95,14 @@ export default function Marketing() {
           <div>
             <h1 className="text-3xl font-bold text-foreground">Аналитика маркетинга</h1>
             <p className="text-muted-foreground mt-1">
-              Мониторинг производительности рекламных кампаний VK Ads
+              Маркетинговые KPI и динамика рекламных кампаний
             </p>
           </div>
         </div>
         <div className="flex items-center justify-center h-96">
           <div className="text-center">
             <Loader className="w-12 h-12 animate-spin text-primary mx-auto mb-4" />
-            <p className="text-muted-foreground">Загрузка данных кампаний...</p>
+            <p className="text-muted-foreground">Загрузка данных...</p>
           </div>
         </div>
       </div>
@@ -88,275 +111,212 @@ export default function Marketing() {
 
   return (
     <div className="space-y-8">
-      {/* Header */}
+      {/* Header with Period and Source Selectors */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Аналитика маркетинга</h1>
           <p className="text-muted-foreground mt-1">
-            Мониторинг производительности рекламных кампаний VK Ads
+            Маркетинговые KPI и динамика рекламных кампаний
           </p>
         </div>
-        <div>
-          <select
-            value={period}
-            onChange={(e) => setPeriod(e.target.value)}
-            className="px-3 py-2 border border-input rounded-md bg-background text-sm"
-          >
-            <option value="7d">За последние 7 дней</option>
-            <option value="30d">За последние 30 дней</option>
-            <option value="90d">За последние 90 дней</option>
-          </select>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-muted-foreground">Период:</span>
+            <select
+              value={period}
+              onChange={(e) => setPeriod(e.target.value as "7d" | "30d" | "90d" | "ytd")}
+              className="px-3 py-2 border border-input rounded-md bg-background text-sm"
+            >
+              <option value="7d">7 дней</option>
+              <option value="30d">30 дней</option>
+              <option value="90d">90 дней</option>
+              <option value="ytd">С начала года</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-muted-foreground">Источник:</span>
+            <select
+              value={source}
+              onChange={(e) => setSource(e.target.value as "vk" | "vk+yandex" | "all")}
+              className="px-3 py-2 border border-input rounded-md bg-background text-sm"
+            >
+              <option value="vk">VK</option>
+              <option value="vk+yandex">VK + Yandex</option>
+              <option value="all">Все</option>
+            </select>
+          </div>
         </div>
       </div>
 
       {error && (
-        <Card className="border-yellow-200 bg-yellow-50">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <AlertCircle className="w-5 h-5 text-yellow-600" />
-              <div>
-                <h3 className="font-semibold text-yellow-900">
-                  Используются тестовые данные
-                </h3>
-                <p className="text-sm text-yellow-700">{error}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* VK Statistics Info - показываем только если есть проблемы */}
-      {error && (
-        <Alert className="border-red-200 bg-red-50">
-          <AlertCircle className="h-4 w-4 text-red-600" />
-          <AlertTitle className="text-red-900 font-semibold">
-            Ошибка загрузки данных
-          </AlertTitle>
-          <AlertDescription className="text-red-700">
-            {error}
-          </AlertDescription>
-        </Alert>
-      )}
-      
-      {!error && campaigns.length > 0 && (
-        <Alert className="border-green-200 bg-green-50">
-          <Info className="h-4 w-4 text-green-600" />
-          <AlertTitle className="text-green-900 font-semibold">
-            VK Ads подключен
-          </AlertTitle>
-          <AlertDescription className="text-green-700">
-            <ul className="list-disc list-inside space-y-1 text-sm">
-              <li>✅ {campaigns.length} кампаний VK Ads</li>
-              <li>✅ Статистика и метрики доступны</li>
-              <li>✅ Автообновление токена активно</li>
-            </ul>
-          </AlertDescription>
+        <Alert className="border-yellow-200 bg-yellow-50">
+          <Info className="h-4 w-4 text-yellow-600" />
+          <AlertTitle className="text-yellow-900">Предупреждение</AlertTitle>
+          <AlertDescription className="text-yellow-700">{error}</AlertDescription>
         </Alert>
       )}
 
-      {/* Filters */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex gap-4 flex-wrap">
-            <div className="flex-1 min-w-64">
-              <div className="relative">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Поиск по кампаниям..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-2 border border-input rounded-md bg-background text-sm"
-            >
-              <option value="all">Все статусы</option>
-              <option value="active">Активная</option>
-              <option value="stopped">Остановленная</option>
-            </select>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="px-3 py-2 border border-input rounded-md bg-background text-sm"
-            >
-              <option value="spent">По расходам</option>
-              <option value="revenue">По выручке</option>
-              <option value="roas">По ROAS</option>
-            </select>
+      {/* Маркетинговые KPI */}
+      {funnelSummary && (
+        <div className="space-y-4">
+          <div>
+            <h2 className="text-2xl font-bold text-foreground">Маркетинговые KPI</h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              Ключевые показатели эффективности рекламы
+            </p>
           </div>
-        </CardContent>
-      </Card>
 
-      {/* Campaigns Table */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {/* CTR */}
+            <div>
+              <KPICard
+                title="CTR"
+                value={funnelSummary.kpi.ctr.toFixed(2)}
+                unit="%"
+                icon={<MousePointerClick className="w-5 h-5" />}
+              />
+              <p className="text-xs text-muted-foreground mt-2 text-center">
+                Источник: VK (показы, клики)
+              </p>
+            </div>
+
+            {/* CPC */}
+            <div>
+              <KPICard
+                title="CPC"
+                value={funnelSummary.kpi.cpc.toFixed(0)}
+                unit="₽"
+                icon={<DollarSign className="w-5 h-5" />}
+              />
+              <p className="text-xs text-muted-foreground mt-2 text-center">
+                Источник: VK (расходы, клики)
+              </p>
+            </div>
+
+            {/* CPM */}
+            <div>
+              <KPICard
+                title="CPM"
+                value={funnelSummary.kpi.cpm.toFixed(0)}
+                unit="₽"
+                icon={<Eye className="w-5 h-5" />}
+              />
+              <p className="text-xs text-muted-foreground mt-2 text-center">
+                Источник: VK (расходы, показы)
+              </p>
+            </div>
+
+            {/* Conversion Rate */}
+            <div>
+              <KPICard
+                title="Конверсия"
+                value={funnelSummary.kpi.conversionRate.toFixed(2)}
+                unit="%"
+                icon={<TrendingUp className="w-5 h-5" />}
+              />
+              <p className="text-xs text-muted-foreground mt-2 text-center">
+                Источник: VK (клики) → Yandex + 1C (заказы)
+              </p>
+            </div>
+
+            {/* ROAS */}
+            <div>
+              <KPICard
+                title="ROAS"
+                value={funnelSummary.kpi.roas.toFixed(2)}
+                icon={<Target className="w-5 h-5" />}
+              />
+              <p className="text-xs text-muted-foreground mt-2 text-center">
+                Источник: VK (расходы) → Yandex + 1C (выручка)
+              </p>
+            </div>
+
+            {/* AOV */}
+            <div>
+              <KPICard
+                title="AOV"
+                value={`${(funnelSummary.kpi.aov / 1000).toFixed(1)}K`}
+                unit="₽"
+                icon={<BarChart3 className="w-5 h-5" />}
+              />
+              <p className="text-xs text-muted-foreground mt-2 text-center">
+                Источник: Yandex + 1C (выручка, заказы)
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Динамика показов/кликов/расходов */}
       <Card>
         <CardHeader>
-          <CardTitle>Активные кампании</CardTitle>
+          <CardTitle>Динамика показов/кликов/расходов</CardTitle>
+          <p className="text-sm text-muted-foreground mt-1">
+            Ежедневная статистика по рекламным кампаниям VK Ads
+          </p>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-12">
-                    <input type="checkbox" className="rounded" />
-                  </TableHead>
-                  <TableHead>Название кампании</TableHead>
-                  <TableHead className="text-right">Статус</TableHead>
-                  <TableHead className="text-right">Показы</TableHead>
-                  <TableHead className="text-right">Клики</TableHead>
-                  <TableHead className="text-right">CTR</TableHead>
-                  <TableHead className="text-right">Расход</TableHead>
-                  <TableHead className="text-right">CPC</TableHead>
-                  <TableHead className="text-right">Выручка</TableHead>
-                  <TableHead className="text-right">ROAS</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sortedCampaigns.map((campaign) => (
-                  <TableRow key={campaign.id}>
-                    <TableCell>
-                      <input
-                        type="checkbox"
-                        className="rounded"
-                        checked={selectedCampaigns.includes(campaign.id)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedCampaigns([...selectedCampaigns, campaign.id]);
-                          } else {
-                            setSelectedCampaigns(
-                              selectedCampaigns.filter((id) => id !== campaign.id)
-                            );
-                          }
-                        }}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <div>
-                        <div className="font-medium text-sm">{campaign.name}</div>
-                        <div className="text-xs text-muted-foreground">
-                          ID: {campaign.id}
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Badge
-                        variant={
-                          campaign.status === "active" ? "default" : "secondary"
-                        }
-                      >
-                        {campaign.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {(campaign.statistics?.shows || 0).toLocaleString()}
-                    </TableCell>
-                    <TableCell className="text-right font-medium">
-                      {(campaign.statistics?.clicks || 0).toLocaleString()}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {campaign.statistics?.ctr.toFixed(2)}%
-                    </TableCell>
-                    <TableCell className="text-right">
-                      ₽{(campaign.spent / 1000).toFixed(0)}K
-                    </TableCell>
-                    <TableCell className="text-right">
-                      ₽{campaign.statistics?.cpc.toFixed(0)}
-                    </TableCell>
-                    <TableCell className="text-right font-semibold">
-                      ₽{((campaign.statistics?.revenue || 0) / 1000).toFixed(0)}K
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Badge
-                        variant={
-                          (campaign.statistics?.roas || 0) > 3
-                            ? "default"
-                            : (campaign.statistics?.roas || 0) > 2
-                              ? "secondary"
-                              : "destructive"
-                        }
-                      >
-                        {campaign.statistics?.roas.toFixed(2)}
-                      </Badge>
-                    </TableCell>
+          {vkDailyStats.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Info className="w-8 h-8 mx-auto mb-2 opacity-50" />
+              <p>Нет данных за выбранный период</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Дата</TableHead>
+                    <TableHead className="text-right">Показы</TableHead>
+                    <TableHead className="text-right">Клики</TableHead>
+                    <TableHead className="text-right">CTR</TableHead>
+                    <TableHead className="text-right">Расходы</TableHead>
+                    <TableHead className="text-right">CPC</TableHead>
+                    <TableHead className="text-right">CPM</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                </TableHeader>
+                <TableBody>
+                  {vkDailyStats.map((stat, idx) => {
+                    const ctr = stat.shows > 0 ? (stat.clicks / stat.shows) * 100 : 0;
+                    const cpc = stat.clicks > 0 ? stat.spent / stat.clicks : 0;
+                    const cpm = stat.shows > 0 ? (stat.spent / stat.shows) * 1000 : 0;
+
+                    return (
+                      <TableRow key={idx}>
+                        <TableCell className="font-medium">
+                          {new Date(stat.date).toLocaleDateString("ru-RU", {
+                            day: "2-digit",
+                            month: "2-digit",
+                            year: "numeric",
+                          })}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {stat.shows.toLocaleString()}
+                        </TableCell>
+                        <TableCell className="text-right font-medium">
+                          {stat.clicks.toLocaleString()}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {ctr.toFixed(2)}%
+                        </TableCell>
+                        <TableCell className="text-right">
+                          ₽{(stat.spent / 1000).toFixed(0)}K
+                        </TableCell>
+                        <TableCell className="text-right">
+                          ₽{cpc.toFixed(0)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          ₽{cpm.toFixed(0)}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </CardContent>
       </Card>
-
-      {/* Campaign Performance Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Budget Overview */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Обзор бюджета</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {sortedCampaigns.map((campaign) => (
-                <div key={campaign.id} className="flex items-center gap-3">
-                  <div className="flex-1">
-                    <div className="text-sm font-medium">
-                      {campaign.name.substring(0, 25)}
-                    </div>
-                    <div className="w-full bg-secondary rounded-full h-2 mt-1">
-                      <div
-                        className="bg-primary h-2 rounded-full"
-                        style={{
-                          width: `${(campaign.spent / campaign.budget_limit) * 100}%`,
-                        }}
-                      ></div>
-                    </div>
-                  </div>
-                  <div className="text-right text-sm">
-                    <div className="font-semibold">
-                      {((campaign.spent / campaign.budget_limit) * 100).toFixed(0)}%
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      ₽{(campaign.spent / 1000).toFixed(0)}K
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Performance Ranking */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Рейтинг производительности</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {sortedCampaigns.map((campaign, index) => (
-                <div key={campaign.id} className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-sm font-bold text-primary">
-                    {index + 1}
-                  </div>
-                  <div className="flex-1">
-                    <div className="text-sm font-medium">
-                      {campaign.name.substring(0, 30)}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      ROAS: {campaign.statistics?.roas.toFixed(2)}
-                    </div>
-                  </div>
-                  <Badge variant="outline">
-                    {campaign.status === "active" ? "Активна" : "Остановлена"}
-                  </Badge>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
     </div>
   );
 }

@@ -1,23 +1,102 @@
-// Load dotenv only in Node.js environment
-// Use a simple check to avoid issues in Builder.io
-if (typeof process !== 'undefined' && process.env) {
-  // Use dynamic import that won't block if dotenv fails
-  // This is safe because it's in a try-catch and won't break the module
+// Load .env file FIRST, before any other imports
+// Use CommonJS require for .cjs file (works in ES modules via createRequire)
+try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  require("./loadEnv.cjs");
+  console.log("✅ loadEnv.cjs executed");
+} catch (error) {
+  console.warn("⚠️ Could not load loadEnv.cjs:", error instanceof Error ? error.message : String(error));
+  // Fallback: try to load manually
   try {
-    // dotenv/config is loaded via side-effect import
-    // If it fails, we continue without it
-    void import("dotenv/config");
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const fs = require("fs");
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const path = require("path");
+    const envPath = path.resolve(process.cwd(), ".env");
+    if (fs.existsSync(envPath)) {
+      const envContent = fs.readFileSync(envPath, "utf-8");
+      envContent.split("\n").forEach((line: string) => {
+        const trimmed = line.trim();
+        if (trimmed && !trimmed.startsWith("#") && trimmed.includes("=")) {
+          const [key, ...valueParts] = trimmed.split("=");
+          if (key && valueParts.length > 0) {
+            let value = valueParts.join("=").trim();
+            value = value.replace(/^["']|["']$/g, "");
+            process.env[key.trim()] = value;
+          }
+        }
+      });
+      console.log("✅ .env loaded manually from:", envPath);
+    }
   } catch {
-    // Continue without dotenv - environment variables may be set another way
+    // Ignore
   }
 }
+
+// Tokens are now loaded via dotenv/config in package.json script
 
 import express from "express";
 import cors from "cors";
 import { handleDemo } from "./routes/demo";
 import * as yandexRoutes from "./routes/yandex";
 import * as vkRoutes from "./routes/vk";
+import * as oneCRoutes from "./routes/oneC";
 import { initTokenManager } from "./utils/vkTokenManager";
+
+// Function to load .env file manually (kept for createServer call)
+function loadEnvFile(): void {
+  if (typeof process === 'undefined' || !process.env) {
+    return;
+  }
+  
+  try {
+    // Use Node.js built-in modules (available in Node.js runtime)
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const fs = require("fs");
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const path = require("path");
+    
+    // Try multiple paths to find .env file
+    const cwd = process.cwd();
+    const envPaths = [
+      path.resolve(cwd, ".env"),
+      path.resolve(cwd, "..", ".env"),
+    ];
+    
+    for (const envPath of envPaths) {
+      try {
+        if (fs.existsSync(envPath)) {
+          const envContent = fs.readFileSync(envPath, "utf-8");
+          // Parse .env file manually
+          envContent.split("\n").forEach((line) => {
+            const trimmed = line.trim();
+            if (trimmed && !trimmed.startsWith("#") && trimmed.includes("=")) {
+              const [key, ...valueParts] = trimmed.split("=");
+              if (key && valueParts.length > 0) {
+                let value = valueParts.join("=").trim();
+                // Remove surrounding quotes
+                value = value.replace(/^["']|["']$/g, "");
+                process.env[key.trim()] = value;
+              }
+            }
+          });
+          console.log("✅ .env loaded from:", envPath);
+          
+          // Verify tokens are loaded
+          console.log("✅ YANDEX_TOKEN:", process.env.YANDEX_TOKEN ? `SET (${process.env.YANDEX_TOKEN.substring(0, 20)}...)` : "NOT SET");
+          console.log("✅ VK_TOKEN:", process.env.VK_TOKEN ? `SET (${process.env.VK_TOKEN.substring(0, 20)}...)` : "NOT SET");
+          return;
+        }
+      } catch (err) {
+        // Try next path
+      }
+    }
+    
+    console.warn("⚠️ .env file not found in:", envPaths);
+  } catch (error) {
+    console.warn("⚠️ Could not load .env manually:", error instanceof Error ? error.message : String(error));
+  }
+}
 
 export function createServer() {
   const app = express();
@@ -56,6 +135,13 @@ export function createServer() {
   app.get("/api/vk/banners", vkRoutes.getBanners);
   app.post("/api/vk/statistics", vkRoutes.getStatistics);
   app.get("/api/vk/statistics", vkRoutes.getStatistics);
+
+  // 1C Data routes
+  app.get("/api/1c/products", oneCRoutes.getProducts);
+  app.get("/api/1c/sales", oneCRoutes.getSales);
+  app.get("/api/1c/returns", oneCRoutes.getReturns);
+  app.get("/api/1c/stock-turnover", oneCRoutes.getStockTurnover);
+  app.get("/api/1c/categories", oneCRoutes.getCategories);
 
   return app;
 }

@@ -11,6 +11,7 @@ import Dashboard from "./pages/Dashboard";
 import Marketing from "./pages/Marketing";
 import Sales from "./pages/Sales";
 import Products from "./pages/Products";
+import Stock from "./pages/Stock";
 import Upload1C from "./pages/Upload1C";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
@@ -54,6 +55,14 @@ const App = () => (
             element={
               <DashboardLayout>
                 <Products />
+              </DashboardLayout>
+            }
+          />
+          <Route
+            path="/stock"
+            element={
+              <DashboardLayout>
+                <Stock />
               </DashboardLayout>
             }
           />
