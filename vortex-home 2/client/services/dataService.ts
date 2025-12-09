@@ -75,18 +75,6 @@ export interface FunnelSummary {
   };
 }
 
-/**
- * @deprecated Используйте getPeriodRange из shared/utils/periods.ts
- * Оставлено для обратной совместимости
- */
-export function getPeriodParams(period: string): PeriodParams {
-  const periodRange = getPeriodRange(period as PeriodCode);
-  return {
-    from: periodRange.dateFrom,
-    to: periodRange.dateTo,
-  };
-}
-
 export class DataService {
   async getDashboardSummary(period: string = "30d"): Promise<DashboardSummary> {
     const periodRange = getPeriodRange(period as PeriodCode);
