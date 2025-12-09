@@ -355,8 +355,8 @@ export class DataService {
 
       return topProducts;
     } catch (error) {
-      console.error("Error fetching top products, using mock data:", error);
-      return mockTopProducts;
+      console.error("Error fetching top products:", error);
+      return []; // Возвращаем пустой массив вместо mock данных
     }
   }
 
