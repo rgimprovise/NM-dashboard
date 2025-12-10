@@ -14,10 +14,20 @@ app.use(express.static(distPath));
 
 // Handle React Router - serve index.html for all non-API routes
 // Use middleware without path pattern to catch all unmatched routes
+// IMPORTANT: This must be LAST, after all API routes
 app.use((req, res, next) => {
-  // Don't serve index.html for API routes (they should be handled by API 404 handler)
+  // CRITICAL: Never serve index.html for API routes
   if (req.path.startsWith("/api/") || req.path.startsWith("/health")) {
-    return next(); // This will hit the 404 handler in createServer()
+    // If we reach here, the API route was not found
+    // The 404 handler in createServer() should have handled it, but if not, return JSON error
+    if (!res.headersSent) {
+      console.warn(`⚠️ API route not handled: ${req.method} ${req.path}`);
+      return res.status(404).json({
+        success: false,
+        error: `API endpoint not found: ${req.method} ${req.path}`,
+      });
+    }
+    return next();
   }
   
   // Don't serve index.html for static assets (they should be handled by express.static)

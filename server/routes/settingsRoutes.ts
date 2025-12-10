@@ -246,6 +246,9 @@ export const saveAllSettings: RequestHandler = async (req, res) => {
 export const saveYandexSettings: RequestHandler = async (req, res) => {
   try {
     console.log("📝 POST /api/settings/yandex - Request received");
+    console.log("📝 Request method:", req.method);
+    console.log("📝 Request path:", req.path);
+    console.log("📝 Request URL:", req.url);
     const { token, campaignIds, businessId } = req.body;
     console.log("📝 Request body:", { 
       hasToken: !!token, 
@@ -294,6 +297,9 @@ export const saveYandexSettings: RequestHandler = async (req, res) => {
 export const saveVKSettings: RequestHandler = async (req, res) => {
   try {
     console.log("📝 POST /api/settings/vk - Request received");
+    console.log("📝 Request method:", req.method);
+    console.log("📝 Request path:", req.path);
+    console.log("📝 Request URL:", req.url);
     const { token, refreshToken, accountId, clientId, clientSecret, expiresAt } = req.body;
     console.log("📝 Request body:", { 
       hasToken: !!token, 
