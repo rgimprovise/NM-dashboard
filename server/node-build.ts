@@ -13,10 +13,15 @@ const distPath = path.join(__dirname, "../spa");
 app.use(express.static(distPath));
 
 // Handle React Router - serve index.html for all non-API routes
-// Use app.all with * pattern (not /*) for catch-all route
-app.all("*", (req, res, next) => {
+// Use middleware without path pattern to catch all unmatched routes
+app.use((req, res, next) => {
   // Don't serve index.html for API routes
   if (req.path.startsWith("/api/") || req.path.startsWith("/health")) {
+    return next();
+  }
+  
+  // Don't serve index.html for static assets (they should be handled by express.static)
+  if (req.path.match(/\.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$/)) {
     return next();
   }
   
