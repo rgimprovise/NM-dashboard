@@ -1,0 +1,35 @@
+[
+  {
+    "id": 1765331964006,
+    "filename": "products_example.xlsx",
+    "uploaded_at": "2025-12-10T01:59:24.006Z",
+    "user": "admin",
+    "status": "success",
+    "total_rows": 38473,
+    "imported": 38473,
+    "updated": 0,
+    "errors": 0
+  },
+  {
+    "id": 1765331573057,
+    "filename": "categories.xlsx",
+    "uploaded_at": "2025-12-10T01:52:53.057Z",
+    "user": "admin",
+    "status": "success",
+    "total_rows": 44,
+    "imported": 44,
+    "updated": 0,
+    "errors": 0
+  },
+  {
+    "id": 1765331557970,
+    "filename": "returns.xlsx",
+    "uploaded_at": "2025-12-10T01:52:37.970Z",
+    "user": "admin",
+    "status": "success",
+    "total_rows": 2993,
+    "imported": 2993,
+    "updated": 0,
+    "errors": 0
+  }
+]

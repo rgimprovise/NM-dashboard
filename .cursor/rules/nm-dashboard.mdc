@@ -1,0 +1,374 @@
+---
+alwaysApply: true
+---
+# Fusion Starter — NM Dashboard Extended Architecture Rules (v2, EN)
+
+## 📌 Project Overview
+
+NM Dashboard is a production-grade analytics platform for the furniture company **“Nedorogaya Mebel”**, built on top of an extended Fusion Starter architecture:
+
+- **Frontend:** React 18, TypeScript, React Router 6, Vite, TailwindCSS  
+- **Backend:** Express + TypeScript  
+- **Shared Types:** unified DTO interfaces shared between client & server  
+- **Data Model:** star-schema (`dim_products`, `fact_stock`, `fact_sales_1c`, etc.)  
+- **1C Integration Layer:** XLSX/CSV upload → column mapping → validation → preview → import → upload history  
+- **UI:** Dashboard, Products, Warehouse, Marketing, Sales, Upload1C, Mappings  
+
+This document defines **mandatory architectural rules** for the NM Dashboard project.
+
+---
+
+# 1. General Development Principles
+
+## 1.1. Only real data (strict rule)
+
+It is **strictly forbidden** to use:
+
+- mock/demo/test data  
+- hardcoded fallback values  
+- client-side generated stub data  
+- “temporary” demo endpoints in production code paths  
+
+**The backend API is the only data source for all pages.**
+
+## 1.2. Shared Types are mandatory
+
+All API DTOs and shared structures must exist inside:
+
+```text
+shared/api.ts
+shared/types/*
+Frontend and backend must import these types – no redefinitions in local files.
+
+2. Backend Architecture
+2.1. Express is API-only
+The backend is responsible for:
+
+API routes under /api/v1/*
+
+database access and repositories
+
+integration services (1C, Yandex, VK)
+
+KPI and aggregation logic
+
+The backend must not contain:
+
+demo / fake data
+
+UI-related logic
+
+business logic that can only be done on the client side
+
+2.2. API Prefix
+All production endpoints must be under:
+
+text
+Copy code
+/api/v1/*
+Examples:
+
+text
+Copy code
+/api/v1/products
+/api/v1/warehouse
+/api/v1/dashboard/summary
+/api/v1/1c/upload
+/api/v1/1c/history
+/api/v1/products/mappings
+/api/v1/marketing/*
+/api/v1/sales/*
+2.3. When you may create a backend route
+Allowed:
+
+DB operations (CRUD, queries, aggregations)
+
+handling private tokens/keys for external APIs
+
+data validation, normalization, unification
+
+cross-service interactions (1C + Yandex + VK)
+
+KPI computation and heavy calculations
+
+Forbidden:
+
+proxy-only endpoints that just forward data without added value
+
+endpoints returning mocked or static data for production usage
+
+3. Star-Schema Data Model (mandatory)
+The project follows a star-schema model, as defined in the architecture spec. The core requirement: a single product dimension that unifies Yandex and 1C.
+
+3.1. dim_products — the single source of truth
+Example fields (logical model):
+
+Field	Description
+product_id	internal primary key
+name	product name
+category	category name
+brand	optional brand
+collection	optional collection
+article	SKU / article
+ym_offer_id	Yandex Market offer ID
+ym_shop_sku	Yandex Market shop SKU
+c1_code	1C product code
+base_price	price from 1C (base)
+cost_price	cost price / purchase cost
+
+All UI pages MUST read product information exclusively from this dimension (directly or via unified DTOs). No separate “1C-only product lists” or “Yandex-only product lists” in UI.
+
+3.2. fact_stock
+Contains:
+
+per-product stock quantities
+
+warehouse location and availability
+
+inventory valuation (stock_qty * cost_price or similar)
+
+Used for:
+
+Warehouse page
+
+stock-related KPI on Dashboard
+
+3.3. fact_sales_1c / fact_orders_yandex / fact_marketing
+fact_sales_1c — sales from 1C (source of truth for revenue and margin when available)
+
+fact_orders_yandex — marketplace orders
+
+fact_marketing_* — marketing performance (VK Ads, Yandex Ads)
+
+These are used to compute business KPI on the backend.
+
+4. 1C Integration Layer — Rules
+4.1. Upload Pipeline (Frontend → Backend)
+The Upload1C.tsx workflow must follow this pipeline:
+
+User selects an XLSX/CSV file.
+
+User selects the sheet (if multiple).
+
+User maps columns (e.g. which column is code, name, category, base_price, etc.).
+
+UI displays a preview of parsed rows.
+
+User confirms import; frontend sends data to:
+POST /api/v1/1c/upload
+
+Backend parses rows and validates data.
+
+Backend normalizes rows to OneCItem structure.
+
+Backend performs UPSERT into dim_products.
+
+Backend updates fact_stock (if stock fields are present).
+
+Backend creates an upload history record.
+
+Backend returns an UploadResult object.
+
+Frontend writes it into the upload history UI.
+
+4.2. OneCItem structure
+ts
+Copy code
+export interface OneCItem {
+  code: string;          // required: 1C product code
+  name: string;          // required: human-readable name
+  article?: string;      // optional article/SKU
+  category?: string;     // category from 1C
+  base_price?: number;   // base price from 1C
+  cost_price?: number;   // cost/purchase price
+  brand?: string;        // optional brand
+  collection?: string;   // optional collection
+}
+This is the normalized row model used inside the backend import logic. It must be defined in a shared module (e.g. shared/types/onec.ts).
+
+4.3. UploadResult format
+ts
+Copy code
+export interface UploadResult {
+  id: number;
+  filename: string;
+  uploaded_at: string;
+  user: string;
+  status: "success" | "error" | "partial";
+  total_rows: number;
+  imported: number;
+  updated: number;
+  errors: number;
+  errors_log?: {
+    row: number;
+    field: string;
+    error: string;
+  }[];
+}
+The backend must return this structure for POST /api/v1/1c/upload, and the frontend history UI must consume this structure.
+
+4.4. Backend responsibilities for 1C upload
+The backend must:
+
+convert all parsed rows to OneCItem
+
+ensure UPSERT logic in dim_products by code or article
+
+update category, price, brand, etc. according to incoming data
+
+optionally update fact_stock when stock columns are present in the file
+
+write an upload history record compatible with UploadResult
+
+never return mock or incomplete data
+
+No part of the ETL flow is allowed to end in memory-only storage for production.
+
+5. Frontend Architecture
+5.1. SPA Pages
+All page components live under:
+
+text
+Copy code
+client/pages/*
+Routing is configured in client/App.tsx using React Router.
+
+5.2. DataService is the only gateway to the API
+Forbidden:
+
+calling fetch() directly inside React components
+
+using axios / fetch in page files
+
+creating ad-hoc API clients in components
+
+All server communication must go through:
+
+text
+Copy code
+client/services/dataService.ts
+DataService:
+
+defines all API calls
+
+uses shared DTO types
+
+hides low-level HTTP details from components
+
+5.3. Required API usage per page
+Page	API endpoint(s)
+Dashboard	GET /api/v1/dashboard/summary
+Products	GET /api/v1/products
+Warehouse	GET /api/v1/warehouse
+Upload1C	POST /api/v1/1c/upload, GET /api/v1/1c/history
+Mappings	GET /api/v1/products/mappings
+Marketing	GET /api/v1/marketing/*
+Sales	GET /api/v1/sales/*
+
+If a page is missing a corresponding endpoint, the correct solution is:
+
+Implement the endpoint in the backend under /api/v1.
+
+Add a typed method in dataService.
+
+Wire the page to use the dataService method.
+
+5.4. Strict UI rules
+The UI must not:
+
+contain inline mock arrays (e.g. demoProducts)
+
+use placeholders like "Test product" in production code paths
+
+show fake KPI values
+
+If no real data is available yet (e.g. empty DB), UI must:
+
+show explicit “No data yet” states
+
+show zeros returned from backend (not generated on client)
+
+6. KPI Framework Rules
+6.1. KPI logic exists only on the backend
+All KPI calculations are done on the server, using star-schema tables:
+
+dim_products
+
+fact_stock
+
+fact_sales_1c
+
+fact_orders_yandex
+
+fact_marketing_*
+
+The frontend must not compute:
+
+revenue
+
+profit or margin
+
+ROAS / CTR / conversion rate
+
+stock totals or inventory value
+
+Instead, the backend exposes a KPI summary endpoint, e.g.:
+
+ts
+Copy code
+export interface DashboardSummary {
+  sku_count: number;
+  inventory_value: number;
+  total_stock: number;
+  net_revenue_1c?: number;
+  gross_profit_1c?: number;
+  roas?: number;
+  ctr?: number;
+}
+The Dashboard page uses this DTO directly via dataService.
+
+7. Cursor AI Code Generation Rules
+The AI assistant (Cursor) must:
+
+follow this star-schema architecture and not invent a different one
+
+use shared DTO types from shared/ whenever they exist
+
+never generate demo or mock data for any route or UI
+
+always use /api/v1/... as base URL for new endpoints
+
+fix inconsistent code according to this document, even if the current codebase is not fully aligned
+
+Cursor must not ask clarification questions if:
+
+the architecture spec already defines the answer, or
+
+the expected behavior follows clearly from these rules.
+
+Instead, Cursor must make a best-effort improvement consistent with this spec.
+
+8. Differences from Default Fusion Starter
+Fusion Starter	NM Dashboard Extended
+mock/demo data allowed	mock/demo data strictly forbidden
+no strict data model	strict star-schema enforced
+no mandatory 1C integration	full 1C ETL pipeline is mandatory
+KPI may be computed on frontend	KPI must be computed on backend only
+shared types optional	shared types are mandatory for all endpoints
+
+9. Summary
+NM Dashboard is a data-centric analytics system with:
+
+centralized and strict data architecture
+
+unified API layer under /api/v1
+
+real 1C ETL integration via upload pipeline
+
+backend-only KPI computation
+
+strong shared DTO contracts
+
+zero tolerance for mock/demo data in production code paths
+
+This specification is binding for all contributors working on the NM Dashboard project.

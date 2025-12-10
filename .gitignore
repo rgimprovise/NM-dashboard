@@ -76,3 +76,7 @@ config.py
 # Vite
 .vite/
 
+# Logs
+logs/
+*.log
+
