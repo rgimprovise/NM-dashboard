@@ -80,3 +80,4 @@ config.py
 logs/
 *.log
 
+data/settings.json

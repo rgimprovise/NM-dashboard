@@ -1,32 +1,41 @@
 /**
  * Settings API routes
  * 
- * Provides endpoints for API token status, testing connections, and sync status
+ * Provides endpoints for API token status, testing connections, sync status,
+ * and saving/updating settings
  */
 
 import { RequestHandler } from "express";
-import { ensureValidToken, loadTokens } from "../utils/vkTokenManager";
+import { ensureValidToken, loadTokens, saveTokens } from "../utils/vkTokenManager";
 import { cacheManager } from "../cache/cacheManager";
+import { 
+  loadSettings, 
+  saveSettings, 
+  getYandexSettings, 
+  getVKSettings,
+  ApiSettings 
+} from "../utils/settingsStorage";
 import * as yandexRoutes from "./yandex";
 import * as vkRoutes from "./vk";
 
 const YANDEX_BASE_URL = "https://api.partner.market.yandex.ru";
 
 /**
- * Helper to get Yandex token
+ * Helper to get Yandex token from settings
  */
-function getYandexToken(): string | undefined {
-  return process.env.YANDEX_TOKEN;
+function getYandexToken(): string | null {
+  const settings = getYandexSettings();
+  return settings.token;
 }
 
 function getYandexCampaignIds(): string[] {
-  return (process.env.YANDEX_CAMPAIGN_IDS || "21621656")
-    .split(",")
-    .map(id => id.trim());
+  const settings = getYandexSettings();
+  return settings.campaignIds.length > 0 ? settings.campaignIds : [];
 }
 
-function getVKAccountId(): string | undefined {
-  return process.env.VK_ACCOUNT_ID;
+function getVKAccountId(): string | null {
+  const settings = getVKSettings();
+  return settings.accountId;
 }
 
 /**
@@ -35,11 +44,10 @@ function getVKAccountId(): string | undefined {
  */
 export const getTokenStatus: RequestHandler = async (req, res) => {
   try {
-    const yandexToken = getYandexToken();
-    const yandexCampaignIds = getYandexCampaignIds();
-    const vkAccountId = getVKAccountId();
+    const yandexSettings = getYandexSettings();
+    const vkSettings = getVKSettings();
     
-    // Get VK token info
+    // Get VK token info from token manager
     const vkTokens = loadTokens();
     let vkStatus: {
       connected: boolean;
@@ -62,9 +70,19 @@ export const getTokenStatus: RequestHandler = async (req, res) => {
         hoursUntilExpiry: hoursUntilExpiry,
         lastCheck: new Date().toISOString(),
       };
+    } else if (vkSettings.token) {
+      // VK token exists in settings but not in token manager
+      vkStatus = {
+        connected: true,
+        expiresAt: vkSettings.expiresAt ? new Date(vkSettings.expiresAt).toISOString() : null,
+        hoursUntilExpiry: vkSettings.expiresAt 
+          ? (vkSettings.expiresAt - Date.now()) / (1000 * 60 * 60) 
+          : null,
+        lastCheck: new Date().toISOString(),
+      };
     }
 
-    // Test Yandex connection
+    // Test Yandex connection if token exists
     let yandexStatus: {
       connected: boolean;
       lastCheck: string;
@@ -74,13 +92,12 @@ export const getTokenStatus: RequestHandler = async (req, res) => {
       lastCheck: new Date().toISOString(),
     };
 
-    if (yandexToken) {
+    if (yandexSettings.token && yandexSettings.campaignIds.length > 0) {
       try {
-        // Try to fetch campaigns info as a test
-        const testEndpoint = `/campaigns/${yandexCampaignIds[0]}`;
+        const testEndpoint = `/campaigns/${yandexSettings.campaignIds[0]}`;
         const response = await fetch(`${YANDEX_BASE_URL}${testEndpoint}`, {
           headers: {
-            "Api-Key": yandexToken,
+            "Api-Key": yandexSettings.token,
             "Content-Type": "application/json",
           },
         });
@@ -99,13 +116,15 @@ export const getTokenStatus: RequestHandler = async (req, res) => {
       success: true,
       data: {
         yandex: {
-          token: yandexToken ? `${yandexToken.substring(0, 20)}...` : null,
-          campaignIds: yandexCampaignIds,
-          accountId: process.env.YANDEX_BUSINESS_ID || null,
+          token: yandexSettings.token ? `${yandexSettings.token.substring(0, 20)}...` : null,
+          campaignIds: yandexSettings.campaignIds,
+          accountId: yandexSettings.businessId,
           ...yandexStatus,
         },
         vk: {
-          accountId: vkAccountId || null,
+          accountId: vkSettings.accountId,
+          clientId: vkSettings.clientId,
+          hasToken: !!vkSettings.token,
           ...vkStatus,
         },
       },
@@ -115,6 +134,187 @@ export const getTokenStatus: RequestHandler = async (req, res) => {
     return res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : "Failed to get token status",
+    });
+  }
+};
+
+/**
+ * GET /api/settings/all
+ * Returns all settings for editing (with masked tokens)
+ */
+export const getAllSettings: RequestHandler = async (req, res) => {
+  try {
+    const settings = loadSettings();
+    
+    // Return settings with masked tokens for security
+    return res.json({
+      success: true,
+      data: {
+        yandex: {
+          token: settings.yandex.token ? `${settings.yandex.token.substring(0, 20)}...` : null,
+          hasToken: !!settings.yandex.token,
+          campaignIds: settings.yandex.campaignIds,
+          businessId: settings.yandex.businessId,
+        },
+        vk: {
+          token: settings.vk.token ? `${settings.vk.token.substring(0, 20)}...` : null,
+          hasToken: !!settings.vk.token,
+          accountId: settings.vk.accountId,
+          clientId: settings.vk.clientId,
+          clientSecret: settings.vk.clientSecret ? "***" : null,
+          hasClientSecret: !!settings.vk.clientSecret,
+          expiresAt: settings.vk.expiresAt,
+        },
+        updatedAt: settings.updatedAt,
+      },
+    });
+  } catch (error) {
+    console.error("Error getting all settings:", error);
+    return res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to get settings",
+    });
+  }
+};
+
+/**
+ * POST /api/settings/save
+ * Save all settings at once
+ */
+export const saveAllSettings: RequestHandler = async (req, res) => {
+  try {
+    const { yandex, vk } = req.body;
+    
+    const updatesToApply: Partial<ApiSettings> = {};
+    
+    // Process Yandex settings
+    if (yandex) {
+      updatesToApply.yandex = {
+        token: yandex.token !== undefined ? yandex.token : null,
+        campaignIds: yandex.campaignIds || [],
+        businessId: yandex.businessId || null,
+      };
+    }
+    
+    // Process VK settings
+    if (vk) {
+      updatesToApply.vk = {
+        token: vk.token !== undefined ? vk.token : null,
+        refreshToken: vk.refreshToken || null,
+        accountId: vk.accountId || null,
+        clientId: vk.clientId || null,
+        clientSecret: vk.clientSecret || null,
+        expiresAt: vk.expiresAt || null,
+      };
+      
+      // If VK token is provided, also update the token manager
+      if (vk.token) {
+        try {
+          saveTokens({
+            access_token: vk.token,
+            refresh_token: vk.refreshToken || "",
+            expires_at: vk.expiresAt || Date.now() + 24 * 60 * 60 * 1000, // Default 24h if not specified
+          });
+        } catch (tokenError) {
+          console.warn("Could not save VK tokens to token manager:", tokenError);
+        }
+      }
+    }
+    
+    const savedSettings = saveSettings(updatesToApply);
+    
+    return res.json({
+      success: true,
+      message: "Settings saved successfully",
+      data: {
+        updatedAt: savedSettings.updatedAt,
+      },
+    });
+  } catch (error) {
+    console.error("Error saving settings:", error);
+    return res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to save settings",
+    });
+  }
+};
+
+/**
+ * POST /api/settings/yandex
+ * Save Yandex settings
+ */
+export const saveYandexSettings: RequestHandler = async (req, res) => {
+  try {
+    const { token, campaignIds, businessId } = req.body;
+    
+    const savedSettings = saveSettings({
+      yandex: {
+        token: token || null,
+        campaignIds: campaignIds || [],
+        businessId: businessId || null,
+      },
+    });
+    
+    return res.json({
+      success: true,
+      message: "Yandex settings saved successfully",
+      data: {
+        updatedAt: savedSettings.updatedAt,
+      },
+    });
+  } catch (error) {
+    console.error("Error saving Yandex settings:", error);
+    return res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to save Yandex settings",
+    });
+  }
+};
+
+/**
+ * POST /api/settings/vk
+ * Save VK settings
+ */
+export const saveVKSettings: RequestHandler = async (req, res) => {
+  try {
+    const { token, refreshToken, accountId, clientId, clientSecret, expiresAt } = req.body;
+    
+    const savedSettings = saveSettings({
+      vk: {
+        token: token || null,
+        refreshToken: refreshToken || null,
+        accountId: accountId || null,
+        clientId: clientId || null,
+        clientSecret: clientSecret || null,
+        expiresAt: expiresAt || null,
+      },
+    });
+    
+    // Also update the token manager if token is provided
+    if (token) {
+      try {
+        saveTokens({
+          access_token: token,
+          refresh_token: refreshToken || "",
+          expires_at: expiresAt || Date.now() + 24 * 60 * 60 * 1000,
+        });
+      } catch (tokenError) {
+        console.warn("Could not save VK tokens to token manager:", tokenError);
+      }
+    }
+    
+    return res.json({
+      success: true,
+      message: "VK settings saved successfully",
+      data: {
+        updatedAt: savedSettings.updatedAt,
+      },
+    });
+  } catch (error) {
+    console.error("Error saving VK settings:", error);
+    return res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to save VK settings",
     });
   }
 };
@@ -135,20 +335,26 @@ export const testConnection: RequestHandler = async (req, res) => {
     }
 
     if (provider === "yandex") {
-      const token = getYandexToken();
-      if (!token) {
+      const yandexSettings = getYandexSettings();
+      if (!yandexSettings.token) {
         return res.json({
           success: false,
           error: "Yandex token not configured",
         });
       }
 
+      if (yandexSettings.campaignIds.length === 0) {
+        return res.json({
+          success: false,
+          error: "No Yandex campaign IDs configured",
+        });
+      }
+
       try {
-        const campaignIds = getYandexCampaignIds();
-        const testEndpoint = `/campaigns/${campaignIds[0]}`;
+        const testEndpoint = `/campaigns/${yandexSettings.campaignIds[0]}`;
         const response = await fetch(`${YANDEX_BASE_URL}${testEndpoint}`, {
           headers: {
-            "Api-Key": token,
+            "Api-Key": yandexSettings.token,
             "Content-Type": "application/json",
           },
         });
@@ -159,7 +365,7 @@ export const testConnection: RequestHandler = async (req, res) => {
             success: true,
             message: "Yandex API connection successful",
             data: {
-              campaignId: campaignIds[0],
+              campaignId: yandexSettings.campaignIds[0],
               campaignName: data.campaign?.domain || "Unknown",
             },
           });
@@ -299,7 +505,6 @@ export const triggerSync: RequestHandler = async (req, res) => {
     }
 
     // Clear cache for the source to force reload
-    // Use pattern-based deletion to clear all related cache entries
     if (source === "yandex_orders" || source === "all") {
       cacheManager.deletePattern("yandex:orders:");
     }
@@ -311,7 +516,6 @@ export const triggerSync: RequestHandler = async (req, res) => {
     }
 
     // Trigger actual sync by calling the respective route handlers
-    // We'll use mock req/res to trigger the sync
     const mockReq = { query: {} } as any;
     let syncResult: any = {};
 
@@ -374,8 +578,6 @@ export const triggerSync: RequestHandler = async (req, res) => {
  */
 export const getSyncHistory: RequestHandler = async (req, res) => {
   try {
-    // For now, generate history based on cache existence
-    // In production, this should come from a database or log file
     const history = [];
 
     const yandexOrdersCache = cacheManager.get<any[]>("yandex:orders:all:nodate:nodate");
@@ -426,4 +628,3 @@ export const getSyncHistory: RequestHandler = async (req, res) => {
     });
   }
 };
-

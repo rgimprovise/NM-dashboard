@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -26,6 +27,9 @@ import {
   Eye,
   EyeOff,
   Loader,
+  Save,
+  Edit2,
+  X,
 } from "lucide-react";
 
 interface TokenStatus {
@@ -39,6 +43,8 @@ interface TokenStatus {
   };
   vk: {
     accountId: string | null;
+    clientId: string | null;
+    hasToken: boolean;
     connected: boolean;
     expiresAt: string | null;
     hoursUntilExpiry: number | null;
@@ -65,6 +71,20 @@ interface SyncHistoryItem {
   duration: string;
 }
 
+// Form state for editing
+interface YandexFormData {
+  token: string;
+  campaignIds: string;
+  businessId: string;
+}
+
+interface VKFormData {
+  token: string;
+  accountId: string;
+  clientId: string;
+  clientSecret: string;
+}
+
 export default function Settings() {
   const [activeTab, setActiveTab] = useState("tokens");
   const [showYandexToken, setShowYandexToken] = useState(false);
@@ -75,6 +95,26 @@ export default function Settings() {
   const [syncHistory, setSyncHistory] = useState<SyncHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [testingConnection, setTestingConnection] = useState<string | null>(null);
+  
+  // Edit mode states
+  const [editingYandex, setEditingYandex] = useState(false);
+  const [editingVK, setEditingVK] = useState(false);
+  const [savingYandex, setSavingYandex] = useState(false);
+  const [savingVK, setSavingVK] = useState(false);
+  
+  // Form data
+  const [yandexForm, setYandexForm] = useState<YandexFormData>({
+    token: "",
+    campaignIds: "",
+    businessId: "",
+  });
+  
+  const [vkForm, setVKForm] = useState<VKFormData>({
+    token: "",
+    accountId: "",
+    clientId: "",
+    clientSecret: "",
+  });
 
   // Load token status on mount and when tokens tab is active
   useEffect(() => {
@@ -113,7 +153,6 @@ export default function Settings() {
       }
     } catch (error) {
       console.error("Error loading token status:", error);
-      // Set default empty state on error
       setTokenStatus({
         yandex: {
           token: null,
@@ -124,6 +163,8 @@ export default function Settings() {
         },
         vk: {
           accountId: null,
+          clientId: null,
+          hasToken: false,
           connected: false,
           expiresAt: null,
           hoursUntilExpiry: null,
@@ -148,7 +189,7 @@ export default function Settings() {
       }
     } catch (error) {
       console.error("Error loading sync status:", error);
-      setSyncStatus([]); // Set empty array on error
+      setSyncStatus([]);
     } finally {
       setLoading(false);
     }
@@ -167,7 +208,7 @@ export default function Settings() {
       }
     } catch (error) {
       console.error("Error loading sync history:", error);
-      setSyncHistory([]); // Set empty array on error
+      setSyncHistory([]);
     } finally {
       setLoading(false);
     }
@@ -186,7 +227,6 @@ export default function Settings() {
 
       if (result.success) {
         alert(`✅ ${provider === "yandex" ? "Yandex" : "VK"} подключение успешно!\n${result.message || ""}`);
-        // Reload token status after test
         await loadTokenStatus();
       } else {
         alert(`❌ Ошибка подключения к ${provider === "yandex" ? "Yandex" : "VK"}:\n${result.error || "Unknown error"}`);
@@ -211,7 +251,6 @@ export default function Settings() {
 
       if (result.success) {
         alert(`✅ Синхронизация ${source === "all" ? "всех источников" : source} запущена`);
-        // Reload sync status and history
         await Promise.all([loadSyncStatus(), loadSyncHistory()]);
       } else {
         alert(`❌ Ошибка синхронизации: ${result.error || "Unknown error"}`);
@@ -221,6 +260,91 @@ export default function Settings() {
     } finally {
       setSyncRunning(false);
     }
+  };
+
+  // Save Yandex settings
+  const handleSaveYandex = async () => {
+    try {
+      setSavingYandex(true);
+      const response = await fetch("/api/settings/yandex", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token: yandexForm.token || null,
+          campaignIds: yandexForm.campaignIds
+            .split(",")
+            .map(id => id.trim())
+            .filter(Boolean),
+          businessId: yandexForm.businessId || null,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        alert("✅ Настройки Yandex сохранены!");
+        setEditingYandex(false);
+        await loadTokenStatus();
+      } else {
+        alert(`❌ Ошибка сохранения: ${result.error || "Unknown error"}`);
+      }
+    } catch (error) {
+      alert(`❌ Ошибка: ${error instanceof Error ? error.message : "Unknown error"}`);
+    } finally {
+      setSavingYandex(false);
+    }
+  };
+
+  // Save VK settings
+  const handleSaveVK = async () => {
+    try {
+      setSavingVK(true);
+      const response = await fetch("/api/settings/vk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token: vkForm.token || null,
+          accountId: vkForm.accountId || null,
+          clientId: vkForm.clientId || null,
+          clientSecret: vkForm.clientSecret || null,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        alert("✅ Настройки VK сохранены!");
+        setEditingVK(false);
+        await loadTokenStatus();
+      } else {
+        alert(`❌ Ошибка сохранения: ${result.error || "Unknown error"}`);
+      }
+    } catch (error) {
+      alert(`❌ Ошибка: ${error instanceof Error ? error.message : "Unknown error"}`);
+    } finally {
+      setSavingVK(false);
+    }
+  };
+
+  // Start editing Yandex
+  const startEditingYandex = () => {
+    setYandexForm({
+      token: "",
+      campaignIds: tokenStatus?.yandex?.campaignIds?.join(", ") || "",
+      businessId: tokenStatus?.yandex?.accountId || "",
+    });
+    setEditingYandex(true);
+  };
+
+  // Start editing VK
+  const startEditingVK = () => {
+    setVKForm({
+      token: "",
+      accountId: tokenStatus?.vk?.accountId || "",
+      clientId: tokenStatus?.vk?.clientId || "",
+      clientSecret: "",
+    });
+    setEditingVK(true);
   };
 
   const formatDate = (dateString: string) => {
@@ -296,109 +420,182 @@ export default function Settings() {
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <CardTitle>Yandex Market API</CardTitle>
-                    {tokenStatus?.yandex.connected ? (
-                      <Badge className="bg-green-100 text-green-800">
-                        <CheckCircle className="w-3 h-3 mr-1" />
-                        Активно
-                      </Badge>
-                    ) : (
-                      <Badge className="bg-red-100 text-red-800">
-                        <AlertCircle className="w-3 h-3 mr-1" />
-                        Не подключено
-                      </Badge>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {tokenStatus?.yandex?.connected ? (
+                        <Badge className="bg-green-100 text-green-800">
+                          <CheckCircle className="w-3 h-3 mr-1" />
+                          Активно
+                        </Badge>
+                      ) : (
+                        <Badge className="bg-red-100 text-red-800">
+                          <AlertCircle className="w-3 h-3 mr-1" />
+                          Не подключено
+                        </Badge>
+                      )}
+                      {!editingYandex && (
+                        <Button variant="outline" size="sm" onClick={startEditingYandex}>
+                          <Edit2 className="w-4 h-4 mr-1" />
+                          Редактировать
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div>
-                    <label className="text-sm font-semibold text-muted-foreground block mb-2">
-                      ID кампании
-                    </label>
-                    <div className="bg-muted p-3 rounded font-mono text-sm">
-                      {tokenStatus?.yandex?.campaignIds?.join(", ") || "Не настроено"}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-semibold text-muted-foreground block mb-2">
-                      API токен
-                    </label>
-                    <div className="flex gap-2">
-                      <input
-                        type={showYandexToken ? "text" : "password"}
-                        value={tokenStatus?.yandex?.token || "Токен не настроен"}
-                        readOnly
-                        className="flex-1 px-3 py-2 border border-input rounded-md bg-muted font-mono text-sm"
-                      />
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setShowYandexToken(!showYandexToken)}
-                      >
-                        {showYandexToken ? (
-                          <EyeOff className="w-4 h-4" />
-                        ) : (
-                          <Eye className="w-4 h-4" />
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-
-                  {tokenStatus?.yandex?.error && (
-                    <div className="bg-red-50 border border-red-200 p-3 rounded text-sm text-red-800">
-                      <AlertCircle className="w-4 h-4 inline mr-2" />
-                      Ошибка: {tokenStatus.yandex?.error}
-                    </div>
-                  )}
-
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <label className="text-muted-foreground block mb-1">
-                        Статус
-                      </label>
-                      <div className="flex items-center gap-2">
-                        {tokenStatus?.yandex?.connected ? (
-                          <>
-                            <CheckCircle className="w-4 h-4 text-green-600" />
-                            <span className="text-foreground">Подключено</span>
-                          </>
-                        ) : (
-                          <>
-                            <AlertCircle className="w-4 h-4 text-red-600" />
-                            <span className="text-foreground">Не подключено</span>
-                          </>
-                        )}
+                  {editingYandex ? (
+                    // Edit mode
+                    <>
+                      <div>
+                        <label className="text-sm font-semibold text-muted-foreground block mb-2">
+                          API токен
+                        </label>
+                        <Input
+                          type="password"
+                          value={yandexForm.token}
+                          onChange={(e) => setYandexForm({ ...yandexForm, token: e.target.value })}
+                          placeholder="Введите API токен Yandex Market"
+                          className="font-mono"
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Оставьте пустым, чтобы сохранить текущий токен
+                        </p>
                       </div>
-                    </div>
-                    <div>
-                      <label className="text-muted-foreground block mb-1">
-                        Последняя проверка
-                      </label>
-                      <span className="text-foreground">
-                        {tokenStatus?.yandex?.lastCheck ? formatDate(tokenStatus.yandex?.lastCheck) : "Никогда"}
-                      </span>
-                    </div>
-                  </div>
 
-                  <div className="flex gap-3 justify-end border-t pt-4">
-                    <Button variant="outline" disabled>
-                      Обновить токен
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => handleTestConnection("yandex")}
-                      disabled={testingConnection === "yandex"}
-                    >
-                      {testingConnection === "yandex" ? (
-                        <>
-                          <Loader className="w-4 h-4 mr-2 animate-spin" />
-                          Тестирование...
-                        </>
-                      ) : (
-                        "Тест подключения"
+                      <div>
+                        <label className="text-sm font-semibold text-muted-foreground block mb-2">
+                          ID кампаний (через запятую)
+                        </label>
+                        <Input
+                          value={yandexForm.campaignIds}
+                          onChange={(e) => setYandexForm({ ...yandexForm, campaignIds: e.target.value })}
+                          placeholder="21621656, 22303110, ..."
+                          className="font-mono"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-semibold text-muted-foreground block mb-2">
+                          ID аккаунта (Business ID)
+                        </label>
+                        <Input
+                          value={yandexForm.businessId}
+                          onChange={(e) => setYandexForm({ ...yandexForm, businessId: e.target.value })}
+                          placeholder="892689"
+                          className="font-mono"
+                        />
+                      </div>
+
+                      <div className="flex gap-3 justify-end border-t pt-4">
+                        <Button
+                          variant="outline"
+                          onClick={() => setEditingYandex(false)}
+                          disabled={savingYandex}
+                        >
+                          <X className="w-4 h-4 mr-1" />
+                          Отмена
+                        </Button>
+                        <Button onClick={handleSaveYandex} disabled={savingYandex}>
+                          {savingYandex ? (
+                            <Loader className="w-4 h-4 mr-1 animate-spin" />
+                          ) : (
+                            <Save className="w-4 h-4 mr-1" />
+                          )}
+                          Сохранить
+                        </Button>
+                      </div>
+                    </>
+                  ) : (
+                    // View mode
+                    <>
+                      <div>
+                        <label className="text-sm font-semibold text-muted-foreground block mb-2">
+                          ID кампании
+                        </label>
+                        <div className="bg-muted p-3 rounded font-mono text-sm">
+                          {tokenStatus?.yandex?.campaignIds?.join(", ") || "Не настроено"}
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-semibold text-muted-foreground block mb-2">
+                          API токен
+                        </label>
+                        <div className="flex gap-2">
+                          <input
+                            type={showYandexToken ? "text" : "password"}
+                            value={tokenStatus?.yandex?.token || "Токен не настроен"}
+                            readOnly
+                            className="flex-1 px-3 py-2 border border-input rounded-md bg-muted font-mono text-sm"
+                          />
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setShowYandexToken(!showYandexToken)}
+                            disabled={!tokenStatus?.yandex?.token}
+                          >
+                            {showYandexToken ? (
+                              <EyeOff className="w-4 h-4" />
+                            ) : (
+                              <Eye className="w-4 h-4" />
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+
+                      {tokenStatus?.yandex?.error && (
+                        <div className="bg-red-50 border border-red-200 p-3 rounded text-sm text-red-800">
+                          <AlertCircle className="w-4 h-4 inline mr-2" />
+                          Ошибка: {tokenStatus.yandex?.error}
+                        </div>
                       )}
-                    </Button>
-                  </div>
+
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <label className="text-muted-foreground block mb-1">
+                            Статус
+                          </label>
+                          <div className="flex items-center gap-2">
+                            {tokenStatus?.yandex?.connected ? (
+                              <>
+                                <CheckCircle className="w-4 h-4 text-green-600" />
+                                <span className="text-foreground">Подключено</span>
+                              </>
+                            ) : (
+                              <>
+                                <AlertCircle className="w-4 h-4 text-red-600" />
+                                <span className="text-foreground">Не подключено</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        <div>
+                          <label className="text-muted-foreground block mb-1">
+                            Последняя проверка
+                          </label>
+                          <span className="text-foreground">
+                            {tokenStatus?.yandex?.lastCheck ? formatDate(tokenStatus.yandex?.lastCheck) : "Никогда"}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-3 justify-end border-t pt-4">
+                        <Button
+                          variant="outline"
+                          onClick={() => handleTestConnection("yandex")}
+                          disabled={testingConnection === "yandex" || !tokenStatus?.yandex?.token}
+                        >
+                          {testingConnection === "yandex" ? (
+                            <>
+                              <Loader className="w-4 h-4 mr-2 animate-spin" />
+                              Тестирование...
+                            </>
+                          ) : (
+                            "Тест подключения"
+                          )}
+                        </Button>
+                      </div>
+                    </>
+                  )}
                 </CardContent>
               </Card>
 
@@ -407,116 +604,200 @@ export default function Settings() {
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <CardTitle>VK Ads API v2</CardTitle>
-                    {getVKExpiryBadge(tokenStatus?.vk?.hoursUntilExpiry || null)}
+                    <div className="flex items-center gap-2">
+                      {getVKExpiryBadge(tokenStatus?.vk?.hoursUntilExpiry || null)}
+                      {!editingVK && (
+                        <Button variant="outline" size="sm" onClick={startEditingVK}>
+                          <Edit2 className="w-4 h-4 mr-1" />
+                          Редактировать
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {tokenStatus?.vk?.hoursUntilExpiry !== null && tokenStatus?.vk?.hoursUntilExpiry !== undefined && tokenStatus?.vk?.hoursUntilExpiry < 24 && tokenStatus?.vk?.hoursUntilExpiry > 0 && (
-                    <div className="bg-yellow-50 border border-yellow-200 p-3 rounded flex gap-3">
-                      <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0" />
-                      <p className="text-sm text-yellow-800">
-                        Ваш VK токен доступа истекает через {Math.round(tokenStatus.vk?.hoursUntilExpiry || 0)} часов. Пожалуйста, обновите его
-                        для поддержания непрерывной синхронизации данных.
-                      </p>
-                    </div>
-                  )}
-
-                  {tokenStatus?.vk?.hoursUntilExpiry !== null && tokenStatus?.vk?.hoursUntilExpiry !== undefined && tokenStatus?.vk?.hoursUntilExpiry < 0 && (
-                    <div className="bg-red-50 border border-red-200 p-3 rounded flex gap-3">
-                      <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
-                      <p className="text-sm text-red-800">
-                        Ваш VK токен доступа истек. Необходимо обновить токен для продолжения работы.
-                      </p>
-                    </div>
-                  )}
-
-                  <div>
-                    <label className="text-sm font-semibold text-muted-foreground block mb-2">
-                      ID аккаунта
-                    </label>
-                    <div className="bg-muted p-3 rounded font-mono text-sm">
-                      {tokenStatus?.vk?.accountId || "Не настроено"}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-semibold text-muted-foreground block mb-2">
-                      Токен доступа
-                    </label>
-                    <div className="flex gap-2">
-                      <input
-                        type={showVKToken ? "text" : "password"}
-                        value={tokenStatus?.vk?.connected ? "Токен настроен (скрыт)" : "Токен не настроен"}
-                        readOnly
-                        className="flex-1 px-3 py-2 border border-input rounded-md bg-muted font-mono text-sm"
-                      />
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setShowVKToken(!showVKToken)}
-                        disabled={!tokenStatus?.vk?.connected}
-                      >
-                        {showVKToken ? (
-                          <EyeOff className="w-4 h-4" />
-                        ) : (
-                          <Eye className="w-4 h-4" />
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <label className="text-muted-foreground block mb-1">
-                        Статус
-                      </label>
-                      <div className="flex items-center gap-2">
-                        {tokenStatus?.vk?.connected ? (
-                          <>
-                            <CheckCircle className="w-4 h-4 text-green-600" />
-                            <span className="text-foreground">Подключено</span>
-                          </>
-                        ) : (
-                          <>
-                            <AlertCircle className="w-4 h-4 text-red-600" />
-                            <span className="text-foreground">Не подключено</span>
-                          </>
-                        )}
+                  {editingVK ? (
+                    // Edit mode
+                    <>
+                      <div>
+                        <label className="text-sm font-semibold text-muted-foreground block mb-2">
+                          Access Token
+                        </label>
+                        <Input
+                          type="password"
+                          value={vkForm.token}
+                          onChange={(e) => setVKForm({ ...vkForm, token: e.target.value })}
+                          placeholder="Введите Access Token VK Ads"
+                          className="font-mono"
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Оставьте пустым, чтобы сохранить текущий токен
+                        </p>
                       </div>
-                    </div>
-                    <div>
-                      <label className="text-muted-foreground block mb-1">
-                        Истекает
-                      </label>
-                      <span className={tokenStatus?.vk?.hoursUntilExpiry && tokenStatus?.vk?.hoursUntilExpiry < 24 ? "text-yellow-600 font-medium" : "text-foreground"}>
-                        {tokenStatus?.vk?.expiresAt ? formatDate(tokenStatus.vk?.expiresAt) : "Неизвестно"}
-                      </span>
-                    </div>
-                  </div>
 
-                  <div className="flex gap-3 justify-end border-t pt-4">
-                    <Button
-                      variant="default"
-                      disabled
-                      title="OAuth обновление токена будет реализовано позже"
-                    >
-                      Обновить токен (OAuth)
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => handleTestConnection("vk")}
-                      disabled={testingConnection === "vk"}
-                    >
-                      {testingConnection === "vk" ? (
-                        <>
-                          <Loader className="w-4 h-4 mr-2 animate-spin" />
-                          Тестирование...
-                        </>
-                      ) : (
-                        "Тест подключения"
+                      <div>
+                        <label className="text-sm font-semibold text-muted-foreground block mb-2">
+                          ID аккаунта
+                        </label>
+                        <Input
+                          value={vkForm.accountId}
+                          onChange={(e) => setVKForm({ ...vkForm, accountId: e.target.value })}
+                          placeholder="8798776"
+                          className="font-mono"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-semibold text-muted-foreground block mb-2">
+                          Client ID
+                        </label>
+                        <Input
+                          value={vkForm.clientId}
+                          onChange={(e) => setVKForm({ ...vkForm, clientId: e.target.value })}
+                          placeholder="b9AHG7669xtg1nvq"
+                          className="font-mono"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-semibold text-muted-foreground block mb-2">
+                          Client Secret
+                        </label>
+                        <Input
+                          type="password"
+                          value={vkForm.clientSecret}
+                          onChange={(e) => setVKForm({ ...vkForm, clientSecret: e.target.value })}
+                          placeholder="Введите Client Secret"
+                          className="font-mono"
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Оставьте пустым, чтобы сохранить текущий secret
+                        </p>
+                      </div>
+
+                      <div className="flex gap-3 justify-end border-t pt-4">
+                        <Button
+                          variant="outline"
+                          onClick={() => setEditingVK(false)}
+                          disabled={savingVK}
+                        >
+                          <X className="w-4 h-4 mr-1" />
+                          Отмена
+                        </Button>
+                        <Button onClick={handleSaveVK} disabled={savingVK}>
+                          {savingVK ? (
+                            <Loader className="w-4 h-4 mr-1 animate-spin" />
+                          ) : (
+                            <Save className="w-4 h-4 mr-1" />
+                          )}
+                          Сохранить
+                        </Button>
+                      </div>
+                    </>
+                  ) : (
+                    // View mode
+                    <>
+                      {tokenStatus?.vk?.hoursUntilExpiry !== null && tokenStatus?.vk?.hoursUntilExpiry !== undefined && tokenStatus?.vk?.hoursUntilExpiry < 24 && tokenStatus?.vk?.hoursUntilExpiry > 0 && (
+                        <div className="bg-yellow-50 border border-yellow-200 p-3 rounded flex gap-3">
+                          <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0" />
+                          <p className="text-sm text-yellow-800">
+                            Ваш VK токен доступа истекает через {Math.round(tokenStatus.vk?.hoursUntilExpiry || 0)} часов. Пожалуйста, обновите его
+                            для поддержания непрерывной синхронизации данных.
+                          </p>
+                        </div>
                       )}
-                    </Button>
-                  </div>
+
+                      {tokenStatus?.vk?.hoursUntilExpiry !== null && tokenStatus?.vk?.hoursUntilExpiry !== undefined && tokenStatus?.vk?.hoursUntilExpiry < 0 && (
+                        <div className="bg-red-50 border border-red-200 p-3 rounded flex gap-3">
+                          <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+                          <p className="text-sm text-red-800">
+                            Ваш VK токен доступа истек. Необходимо обновить токен для продолжения работы.
+                          </p>
+                        </div>
+                      )}
+
+                      <div>
+                        <label className="text-sm font-semibold text-muted-foreground block mb-2">
+                          ID аккаунта
+                        </label>
+                        <div className="bg-muted p-3 rounded font-mono text-sm">
+                          {tokenStatus?.vk?.accountId || "Не настроено"}
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-semibold text-muted-foreground block mb-2">
+                          Токен доступа
+                        </label>
+                        <div className="flex gap-2">
+                          <input
+                            type={showVKToken ? "text" : "password"}
+                            value={tokenStatus?.vk?.hasToken ? "Токен настроен (скрыт)" : "Токен не настроен"}
+                            readOnly
+                            className="flex-1 px-3 py-2 border border-input rounded-md bg-muted font-mono text-sm"
+                          />
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setShowVKToken(!showVKToken)}
+                            disabled={!tokenStatus?.vk?.hasToken}
+                          >
+                            {showVKToken ? (
+                              <EyeOff className="w-4 h-4" />
+                            ) : (
+                              <Eye className="w-4 h-4" />
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <label className="text-muted-foreground block mb-1">
+                            Статус
+                          </label>
+                          <div className="flex items-center gap-2">
+                            {tokenStatus?.vk?.connected ? (
+                              <>
+                                <CheckCircle className="w-4 h-4 text-green-600" />
+                                <span className="text-foreground">Подключено</span>
+                              </>
+                            ) : (
+                              <>
+                                <AlertCircle className="w-4 h-4 text-red-600" />
+                                <span className="text-foreground">Не подключено</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        <div>
+                          <label className="text-muted-foreground block mb-1">
+                            Истекает
+                          </label>
+                          <span className={tokenStatus?.vk?.hoursUntilExpiry && tokenStatus?.vk?.hoursUntilExpiry < 24 ? "text-yellow-600 font-medium" : "text-foreground"}>
+                            {tokenStatus?.vk?.expiresAt ? formatDate(tokenStatus.vk?.expiresAt) : "Неизвестно"}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-3 justify-end border-t pt-4">
+                        <Button
+                          variant="outline"
+                          onClick={() => handleTestConnection("vk")}
+                          disabled={testingConnection === "vk" || !tokenStatus?.vk?.hasToken}
+                        >
+                          {testingConnection === "vk" ? (
+                            <>
+                              <Loader className="w-4 h-4 mr-2 animate-spin" />
+                              Тестирование...
+                            </>
+                          ) : (
+                            "Тест подключения"
+                          )}
+                        </Button>
+                      </div>
+                    </>
+                  )}
                 </CardContent>
               </Card>
             </>

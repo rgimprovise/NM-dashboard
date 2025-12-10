@@ -22,20 +22,20 @@ try {
     
     let envLoaded = false;
     for (const envPath of envPaths) {
-      if (fs.existsSync(envPath)) {
-        const envContent = fs.readFileSync(envPath, "utf-8");
-        envContent.split("\n").forEach((line: string) => {
-          const trimmed = line.trim();
-          if (trimmed && !trimmed.startsWith("#") && trimmed.includes("=")) {
-            const [key, ...valueParts] = trimmed.split("=");
-            if (key && valueParts.length > 0) {
-              let value = valueParts.join("=").trim();
-              value = value.replace(/^["']|["']$/g, "");
-              process.env[key.trim()] = value;
-            }
+    if (fs.existsSync(envPath)) {
+      const envContent = fs.readFileSync(envPath, "utf-8");
+      envContent.split("\n").forEach((line: string) => {
+        const trimmed = line.trim();
+        if (trimmed && !trimmed.startsWith("#") && trimmed.includes("=")) {
+          const [key, ...valueParts] = trimmed.split("=");
+          if (key && valueParts.length > 0) {
+            let value = valueParts.join("=").trim();
+            value = value.replace(/^["']|["']$/g, "");
+            process.env[key.trim()] = value;
           }
-        });
-        console.log("✅ .env loaded manually from:", envPath);
+        }
+      });
+      console.log("✅ .env loaded manually from:", envPath);
         envLoaded = true;
         break;
       }
@@ -170,6 +170,10 @@ export function createServer() {
 
   // Settings routes
   app.get("/api/settings/token-status", settingsRoutes.getTokenStatus);
+  app.get("/api/settings/all", settingsRoutes.getAllSettings);
+  app.post("/api/settings/save", settingsRoutes.saveAllSettings);
+  app.post("/api/settings/yandex", settingsRoutes.saveYandexSettings);
+  app.post("/api/settings/vk", settingsRoutes.saveVKSettings);
   app.post("/api/settings/test-connection", settingsRoutes.testConnection);
   app.get("/api/settings/sync-status", settingsRoutes.getSyncStatus);
   app.post("/api/settings/trigger-sync", settingsRoutes.triggerSync);
