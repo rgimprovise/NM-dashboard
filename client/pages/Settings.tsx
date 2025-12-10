@@ -411,7 +411,7 @@ export default function Settings() {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {tokenStatus?.vk?.hoursUntilExpiry !== null && tokenStatus.vk.hoursUntilExpiry !== undefined && tokenStatus.vk.hoursUntilExpiry < 24 && tokenStatus.vk.hoursUntilExpiry > 0 && (
+                  {tokenStatus?.vk?.hoursUntilExpiry !== null && tokenStatus?.vk?.hoursUntilExpiry !== undefined && tokenStatus?.vk?.hoursUntilExpiry < 24 && tokenStatus?.vk?.hoursUntilExpiry > 0 && (
                     <div className="bg-yellow-50 border border-yellow-200 p-3 rounded flex gap-3">
                       <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0" />
                       <p className="text-sm text-yellow-800">
@@ -421,7 +421,7 @@ export default function Settings() {
                     </div>
                   )}
 
-                  {tokenStatus?.vk?.hoursUntilExpiry !== null && tokenStatus.vk.hoursUntilExpiry !== undefined && tokenStatus.vk.hoursUntilExpiry < 0 && (
+                  {tokenStatus?.vk?.hoursUntilExpiry !== null && tokenStatus?.vk?.hoursUntilExpiry !== undefined && tokenStatus?.vk?.hoursUntilExpiry < 0 && (
                     <div className="bg-red-50 border border-red-200 p-3 rounded flex gap-3">
                       <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
                       <p className="text-sm text-red-800">
@@ -488,7 +488,7 @@ export default function Settings() {
                       <label className="text-muted-foreground block mb-1">
                         Истекает
                       </label>
-                      <span className={tokenStatus?.vk?.hoursUntilExpiry && tokenStatus.vk.hoursUntilExpiry < 24 ? "text-yellow-600 font-medium" : "text-foreground"}>
+                      <span className={tokenStatus?.vk?.hoursUntilExpiry && tokenStatus?.vk?.hoursUntilExpiry < 24 ? "text-yellow-600 font-medium" : "text-foreground"}>
                         {tokenStatus?.vk?.expiresAt ? formatDate(tokenStatus.vk?.expiresAt) : "Неизвестно"}
                       </span>
                     </div>
