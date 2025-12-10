@@ -15,16 +15,16 @@ app.use(express.static(distPath));
 // Handle React Router - serve index.html for all non-API routes
 // Use middleware without path pattern to catch all unmatched routes
 app.use((req, res, next) => {
-  // Don't serve index.html for API routes
+  // Don't serve index.html for API routes (they should be handled by API 404 handler)
   if (req.path.startsWith("/api/") || req.path.startsWith("/health")) {
-    return next();
+    return next(); // This will hit the 404 handler in createServer()
   }
   
   // Don't serve index.html for static assets (they should be handled by express.static)
   if (req.path.match(/\.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$/)) {
     return next();
   }
-  
+
   // Serve index.html for SPA routing (React Router)
   res.sendFile(path.join(distPath, "index.html"), (err) => {
     if (err) {

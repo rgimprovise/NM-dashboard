@@ -245,7 +245,13 @@ export const saveAllSettings: RequestHandler = async (req, res) => {
  */
 export const saveYandexSettings: RequestHandler = async (req, res) => {
   try {
+    console.log("📝 POST /api/settings/yandex - Request received");
     const { token, campaignIds, businessId } = req.body;
+    console.log("📝 Request body:", { 
+      hasToken: !!token, 
+      campaignIds, 
+      businessId 
+    });
     
     const savedSettings = saveSettings({
       yandex: {
@@ -255,6 +261,7 @@ export const saveYandexSettings: RequestHandler = async (req, res) => {
       },
     });
     
+    console.log("✅ Settings saved successfully");
     return res.json({
       success: true,
       message: "Yandex settings saved successfully",
@@ -263,7 +270,7 @@ export const saveYandexSettings: RequestHandler = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Error saving Yandex settings:", error);
+    console.error("❌ Error saving Yandex settings:", error);
     return res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : "Failed to save Yandex settings",
@@ -277,7 +284,14 @@ export const saveYandexSettings: RequestHandler = async (req, res) => {
  */
 export const saveVKSettings: RequestHandler = async (req, res) => {
   try {
+    console.log("📝 POST /api/settings/vk - Request received");
     const { token, refreshToken, accountId, clientId, clientSecret, expiresAt } = req.body;
+    console.log("📝 Request body:", { 
+      hasToken: !!token, 
+      accountId, 
+      clientId,
+      hasClientSecret: !!clientSecret
+    });
     
     const savedSettings = saveSettings({
       vk: {
@@ -303,6 +317,7 @@ export const saveVKSettings: RequestHandler = async (req, res) => {
       }
     }
     
+    console.log("✅ VK settings saved successfully");
     return res.json({
       success: true,
       message: "VK settings saved successfully",
@@ -311,7 +326,7 @@ export const saveVKSettings: RequestHandler = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Error saving VK settings:", error);
+    console.error("❌ Error saving VK settings:", error);
     return res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : "Failed to save VK settings",
