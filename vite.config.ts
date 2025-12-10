@@ -1,11 +1,12 @@
 // Load environment variables BEFORE importing anything else
-// Use fs to manually parse .env file (works in both CommonJS and ES modules)
+// Use createRequire for ES modules compatibility
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
+
 let envLoaded = false;
 try {
   if (typeof process !== 'undefined' && process.env) {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const fs = require("fs");
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const path = require("path");
     
     const envPath = path.resolve(process.cwd(), ".env");

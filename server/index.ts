@@ -3,33 +3,49 @@
 import { createRequire } from "module";
 const require = createRequire(import.meta.url);
 
+// Try to load loadEnv.cjs, but fallback to manual loading if not found
 try {
-  require("./loadEnv.cjs");
+  // Try to require from source location first
+  const loadEnvPath = require.resolve("./loadEnv.cjs");
+  require(loadEnvPath);
   console.log("✅ loadEnv.cjs executed");
 } catch (error) {
-  console.warn("⚠️ Could not load loadEnv.cjs:", error instanceof Error ? error.message : String(error));
-  // Fallback: try to load manually
+  // Fallback: load .env manually (works in both source and dist)
   try {
     const fs = require("fs");
     const path = require("path");
-    const envPath = path.resolve(process.cwd(), ".env");
-    if (fs.existsSync(envPath)) {
-      const envContent = fs.readFileSync(envPath, "utf-8");
-      envContent.split("\n").forEach((line: string) => {
-        const trimmed = line.trim();
-        if (trimmed && !trimmed.startsWith("#") && trimmed.includes("=")) {
-          const [key, ...valueParts] = trimmed.split("=");
-          if (key && valueParts.length > 0) {
-            let value = valueParts.join("=").trim();
-            value = value.replace(/^["']|["']$/g, "");
-            process.env[key.trim()] = value;
+    const cwd = process.cwd();
+    const envPaths = [
+      path.resolve(cwd, ".env"),
+      path.resolve(cwd, "..", ".env"),
+    ];
+    
+    let envLoaded = false;
+    for (const envPath of envPaths) {
+      if (fs.existsSync(envPath)) {
+        const envContent = fs.readFileSync(envPath, "utf-8");
+        envContent.split("\n").forEach((line: string) => {
+          const trimmed = line.trim();
+          if (trimmed && !trimmed.startsWith("#") && trimmed.includes("=")) {
+            const [key, ...valueParts] = trimmed.split("=");
+            if (key && valueParts.length > 0) {
+              let value = valueParts.join("=").trim();
+              value = value.replace(/^["']|["']$/g, "");
+              process.env[key.trim()] = value;
+            }
           }
-        }
-      });
-      console.log("✅ .env loaded manually from:", envPath);
+        });
+        console.log("✅ .env loaded manually from:", envPath);
+        envLoaded = true;
+        break;
+      }
     }
-  } catch {
-    // Ignore
+    
+    if (!envLoaded) {
+      console.warn("⚠️ Could not load loadEnv.cjs and .env file not found in:", envPaths);
+    }
+  } catch (err) {
+    console.warn("⚠️ Could not load .env manually:", err instanceof Error ? err.message : String(err));
   }
 }
 
