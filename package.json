@@ -12,6 +12,7 @@
   },
   "scripts": {
     "dev": "node -r dotenv/config node_modules/.bin/vite",
+    "dev:server": "node -r dotenv/config --loader tsx server/dev-server.ts",
     "build": "npm run build:client && npm run build:server",
     "build:client": "vite build",
     "build:server": "vite build --config vite.config.server.ts",

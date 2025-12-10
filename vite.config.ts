@@ -101,10 +101,18 @@ export default defineConfig(({ mode }) => {
   return {
     server: {
       host: "::",
-      port: 8080,
+      port: 5173,
       fs: {
         allow: [".", "./client", "./shared"],
         deny: [".env", ".env.*", "*.{crt,pem}", "**/.git/**", "server/**"],
+      },
+      // Proxy API requests to Express server in development
+      proxy: {
+        "/api": {
+          target: "http://localhost:3000",
+          changeOrigin: true,
+          secure: false,
+        },
       },
     },
     build: {
