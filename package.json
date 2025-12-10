@@ -11,7 +11,8 @@
     ]
   },
   "scripts": {
-    "dev": "node -r dotenv/config node_modules/.bin/vite",
+    "dev": "concurrently -n \"vite,server\" -c \"blue,green\" \"npm run dev:client\" \"npm run dev:server\"",
+    "dev:client": "node -r dotenv/config node_modules/.bin/vite",
     "dev:server": "node -r dotenv/config --loader tsx server/dev-server.ts",
     "build": "npm run build:client && npm run build:server",
     "build:client": "vite build",
@@ -74,6 +75,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
+    "concurrently": "^9.2.1",
     "cors": "^2.8.5",
     "date-fns": "^4.1.0",
     "embla-carousel-react": "^8.6.0",
