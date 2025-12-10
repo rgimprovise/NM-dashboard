@@ -326,7 +326,7 @@ export default function Settings() {
                     <div className="flex gap-2">
                       <input
                         type={showYandexToken ? "text" : "password"}
-                        value={tokenStatus?.yandex.token || "Токен не настроен"}
+                        value={tokenStatus?.yandex?.token || "Токен не настроен"}
                         readOnly
                         className="flex-1 px-3 py-2 border border-input rounded-md bg-muted font-mono text-sm"
                       />
@@ -344,7 +344,7 @@ export default function Settings() {
                     </div>
                   </div>
 
-                  {tokenStatus?.yandex.error && (
+                  {tokenStatus?.yandex?.error && (
                     <div className="bg-red-50 border border-red-200 p-3 rounded text-sm text-red-800">
                       <AlertCircle className="w-4 h-4 inline mr-2" />
                       Ошибка: {tokenStatus.yandex.error}
@@ -357,7 +357,7 @@ export default function Settings() {
                         Статус
                       </label>
                       <div className="flex items-center gap-2">
-                        {tokenStatus?.yandex.connected ? (
+                        {tokenStatus?.yandex?.connected ? (
                           <>
                             <CheckCircle className="w-4 h-4 text-green-600" />
                             <span className="text-foreground">Подключено</span>
@@ -375,7 +375,7 @@ export default function Settings() {
                         Последняя проверка
                       </label>
                       <span className="text-foreground">
-                        {tokenStatus?.yandex.lastCheck ? formatDate(tokenStatus.yandex.lastCheck) : "Никогда"}
+                        {tokenStatus?.yandex?.lastCheck ? formatDate(tokenStatus.yandex.lastCheck) : "Никогда"}
                       </span>
                     </div>
                   </div>
@@ -407,7 +407,7 @@ export default function Settings() {
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <CardTitle>VK Ads API v2</CardTitle>
-                    {getVKExpiryBadge(tokenStatus?.vk.hoursUntilExpiry || null)}
+                    {getVKExpiryBadge(tokenStatus?.vk?.hoursUntilExpiry || null)}
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -435,7 +435,7 @@ export default function Settings() {
                       ID аккаунта
                     </label>
                     <div className="bg-muted p-3 rounded font-mono text-sm">
-                      {tokenStatus?.vk.accountId || "Не настроено"}
+                      {tokenStatus?.vk?.accountId || "Не настроено"}
                     </div>
                   </div>
 
@@ -446,7 +446,7 @@ export default function Settings() {
                     <div className="flex gap-2">
                       <input
                         type={showVKToken ? "text" : "password"}
-                        value={tokenStatus?.vk.connected ? "Токен настроен (скрыт)" : "Токен не настроен"}
+                        value={tokenStatus?.vk?.connected ? "Токен настроен (скрыт)" : "Токен не настроен"}
                         readOnly
                         className="flex-1 px-3 py-2 border border-input rounded-md bg-muted font-mono text-sm"
                       />
@@ -454,7 +454,7 @@ export default function Settings() {
                         variant="ghost"
                         size="icon"
                         onClick={() => setShowVKToken(!showVKToken)}
-                        disabled={!tokenStatus?.vk.connected}
+                        disabled={!tokenStatus?.vk?.connected}
                       >
                         {showVKToken ? (
                           <EyeOff className="w-4 h-4" />
@@ -471,7 +471,7 @@ export default function Settings() {
                         Статус
                       </label>
                       <div className="flex items-center gap-2">
-                        {tokenStatus?.vk.connected ? (
+                        {tokenStatus?.vk?.connected ? (
                           <>
                             <CheckCircle className="w-4 h-4 text-green-600" />
                             <span className="text-foreground">Подключено</span>
