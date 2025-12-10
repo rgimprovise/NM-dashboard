@@ -13,7 +13,7 @@
   "scripts": {
     "dev": "concurrently -n \"vite,server\" -c \"blue,green\" \"npm run dev:client\" \"npm run dev:server\"",
     "dev:client": "node -r dotenv/config node_modules/.bin/vite",
-    "dev:server": "node -r dotenv/config --loader tsx server/dev-server.ts",
+    "dev:server": "npx tsx server/dev-server.ts",
     "build": "npm run build:client && npm run build:server",
     "build:client": "vite build",
     "build:server": "vite build --config vite.config.server.ts",
