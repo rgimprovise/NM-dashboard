@@ -54,10 +54,17 @@ function getSettingsPath(): string {
  * Ensure data directory exists
  */
 function ensureDataDir(): void {
-  const cwd = process.cwd();
-  const dataDir = path.resolve(cwd, "data");
-  if (!fs.existsSync(dataDir)) {
-    fs.mkdirSync(dataDir, { recursive: true });
+  try {
+    const cwd = process.cwd();
+    const dataDir = path.resolve(cwd, "data");
+    if (!fs.existsSync(dataDir)) {
+      console.log("📁 Creating data directory:", dataDir);
+      fs.mkdirSync(dataDir, { recursive: true });
+      console.log("✅ Data directory created");
+    }
+  } catch (error) {
+    console.error("❌ Error creating data directory:", error);
+    throw new Error(`Failed to create data directory: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
@@ -142,53 +149,68 @@ function mergeWithEnv(fileSettings: ApiSettings): ApiSettings {
  * Save settings to file
  */
 export function saveSettings(settings: Partial<ApiSettings>): ApiSettings {
-  ensureDataDir();
-  const settingsPath = getSettingsPath();
-  
-  // Load existing settings first
-  const currentSettings = loadSettings();
-  
-  // Merge with new settings
-  const updatedSettings: ApiSettings = {
-    yandex: {
-      ...currentSettings.yandex,
-      ...(settings.yandex || {}),
-    },
-    vk: {
-      ...currentSettings.vk,
-      ...(settings.vk || {}),
-    },
-    updatedAt: new Date().toISOString(),
-  };
-  
-  // Save to file
-  fs.writeFileSync(settingsPath, JSON.stringify(updatedSettings, null, 2), "utf-8");
-  console.log("✅ Settings saved to:", settingsPath);
-  
-  // Also update environment variables so they're immediately available
-  if (updatedSettings.yandex.token) {
-    process.env.YANDEX_TOKEN = updatedSettings.yandex.token;
+  try {
+    ensureDataDir();
+    const settingsPath = getSettingsPath();
+    
+    // Load existing settings first
+    const currentSettings = loadSettings();
+    
+    // Merge with new settings
+    const updatedSettings: ApiSettings = {
+      yandex: {
+        ...currentSettings.yandex,
+        ...(settings.yandex || {}),
+      },
+      vk: {
+        ...currentSettings.vk,
+        ...(settings.vk || {}),
+      },
+      updatedAt: new Date().toISOString(),
+    };
+    
+    // Save to file
+    try {
+      fs.writeFileSync(settingsPath, JSON.stringify(updatedSettings, null, 2), "utf-8");
+      console.log("✅ Settings saved to:", settingsPath);
+    } catch (writeError) {
+      console.error("❌ Error writing settings file:", writeError);
+      throw new Error(`Failed to write settings file: ${writeError instanceof Error ? writeError.message : String(writeError)}`);
+    }
+    
+    // Also update environment variables so they're immediately available
+    try {
+      if (updatedSettings.yandex.token) {
+        process.env.YANDEX_TOKEN = updatedSettings.yandex.token;
+      }
+      if (updatedSettings.yandex.campaignIds.length > 0) {
+        process.env.YANDEX_CAMPAIGN_IDS = updatedSettings.yandex.campaignIds.join(",");
+      }
+      if (updatedSettings.yandex.businessId) {
+        process.env.YANDEX_BUSINESS_ID = updatedSettings.yandex.businessId;
+      }
+      if (updatedSettings.vk.token) {
+        process.env.VK_TOKEN = updatedSettings.vk.token;
+      }
+      if (updatedSettings.vk.accountId) {
+        process.env.VK_ACCOUNT_ID = updatedSettings.vk.accountId;
+      }
+      if (updatedSettings.vk.clientId) {
+        process.env.VK_CLIENT_ID = updatedSettings.vk.clientId;
+      }
+      if (updatedSettings.vk.clientSecret) {
+        process.env.VK_CLIENT_SECRET = updatedSettings.vk.clientSecret;
+      }
+    } catch (envError) {
+      console.warn("⚠️ Warning: Could not update environment variables:", envError);
+      // Don't throw - this is not critical
+    }
+    
+    return updatedSettings;
+  } catch (error) {
+    console.error("❌ Error in saveSettings:", error);
+    throw error; // Re-throw to be handled by caller
   }
-  if (updatedSettings.yandex.campaignIds.length > 0) {
-    process.env.YANDEX_CAMPAIGN_IDS = updatedSettings.yandex.campaignIds.join(",");
-  }
-  if (updatedSettings.yandex.businessId) {
-    process.env.YANDEX_BUSINESS_ID = updatedSettings.yandex.businessId;
-  }
-  if (updatedSettings.vk.token) {
-    process.env.VK_TOKEN = updatedSettings.vk.token;
-  }
-  if (updatedSettings.vk.accountId) {
-    process.env.VK_ACCOUNT_ID = updatedSettings.vk.accountId;
-  }
-  if (updatedSettings.vk.clientId) {
-    process.env.VK_CLIENT_ID = updatedSettings.vk.clientId;
-  }
-  if (updatedSettings.vk.clientSecret) {
-    process.env.VK_CLIENT_SECRET = updatedSettings.vk.clientSecret;
-  }
-  
-  return updatedSettings;
 }
 
 /**

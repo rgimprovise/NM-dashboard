@@ -253,15 +253,24 @@ export const saveYandexSettings: RequestHandler = async (req, res) => {
       businessId 
     });
     
-    const savedSettings = saveSettings({
-      yandex: {
-        token: token || null,
-        campaignIds: campaignIds || [],
-        businessId: businessId || null,
-      },
-    });
+    let savedSettings: ApiSettings;
+    try {
+      savedSettings = saveSettings({
+        yandex: {
+          token: token || null,
+          campaignIds: campaignIds || [],
+          businessId: businessId || null,
+        },
+      });
+      console.log("✅ Settings saved successfully");
+    } catch (saveError) {
+      console.error("❌ Error in saveSettings:", saveError);
+      return res.status(500).json({
+        success: false,
+        error: saveError instanceof Error ? saveError.message : "Failed to save settings to file",
+      });
+    }
     
-    console.log("✅ Settings saved successfully");
     return res.json({
       success: true,
       message: "Yandex settings saved successfully",
@@ -293,16 +302,25 @@ export const saveVKSettings: RequestHandler = async (req, res) => {
       hasClientSecret: !!clientSecret
     });
     
-    const savedSettings = saveSettings({
-      vk: {
-        token: token || null,
-        refreshToken: refreshToken || null,
-        accountId: accountId || null,
-        clientId: clientId || null,
-        clientSecret: clientSecret || null,
-        expiresAt: expiresAt || null,
-      },
-    });
+    let savedSettings: ApiSettings;
+    try {
+      savedSettings = saveSettings({
+        vk: {
+          token: token || null,
+          refreshToken: refreshToken || null,
+          accountId: accountId || null,
+          clientId: clientId || null,
+          clientSecret: clientSecret || null,
+          expiresAt: expiresAt || null,
+        },
+      });
+    } catch (saveError) {
+      console.error("❌ Error in saveSettings:", saveError);
+      return res.status(500).json({
+        success: false,
+        error: saveError instanceof Error ? saveError.message : "Failed to save settings to file",
+      });
+    }
     
     // Also update the token manager if token is provided
     if (token) {
@@ -313,7 +331,8 @@ export const saveVKSettings: RequestHandler = async (req, res) => {
           expires_at: expiresAt || Date.now() + 24 * 60 * 60 * 1000,
         });
       } catch (tokenError) {
-        console.warn("Could not save VK tokens to token manager:", tokenError);
+        console.warn("⚠️ Could not save VK tokens to token manager:", tokenError);
+        // Don't fail the request if token manager fails
       }
     }
     

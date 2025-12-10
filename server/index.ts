@@ -186,21 +186,25 @@ export function createServer() {
 
   // 404 handler for API routes (must be before SPA middleware)
   app.use("/api/*", (req, res) => {
-    res.status(404).json({
-      success: false,
-      error: `API endpoint not found: ${req.method} ${req.path}`,
-    });
+    if (!res.headersSent) {
+      res.status(404).json({
+        success: false,
+        error: `API endpoint not found: ${req.method} ${req.path}`,
+      });
+    }
   });
 
-  // Global error handler for API routes
-  app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  // Global error handler for API routes (must have 4 parameters to be recognized as error handler)
+  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
     // Only handle errors for API routes
     if (req.path.startsWith("/api/")) {
       console.error("API Error:", err);
-      res.status(500).json({
-        success: false,
-        error: err.message || "Internal server error",
-      });
+      if (!res.headersSent) {
+        res.status(500).json({
+          success: false,
+          error: err?.message || err?.toString() || "Internal server error",
+        });
+      }
     } else {
       next(err);
     }
