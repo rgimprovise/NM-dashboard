@@ -1,16 +1,16 @@
 // Load .env file FIRST, before any other imports
-// Use CommonJS require for .cjs file (works in ES modules via createRequire)
+// Use createRequire for ES modules compatibility
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
+
 try {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
   require("./loadEnv.cjs");
   console.log("✅ loadEnv.cjs executed");
 } catch (error) {
   console.warn("⚠️ Could not load loadEnv.cjs:", error instanceof Error ? error.message : String(error));
   // Fallback: try to load manually
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const fs = require("fs");
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const path = require("path");
     const envPath = path.resolve(process.cwd(), ".env");
     if (fs.existsSync(envPath)) {
@@ -54,9 +54,8 @@ function loadEnvFile(): void {
   
   try {
     // Use Node.js built-in modules (available in Node.js runtime)
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    // require is already available from createRequire at top level
     const fs = require("fs");
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const path = require("path");
     
     // Try multiple paths to find .env file
