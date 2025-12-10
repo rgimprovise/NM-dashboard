@@ -10,7 +10,7 @@ module.exports = {
       name: "nm-dashboard",
       script: "npm",
       args: "start",
-      cwd: process.cwd(),
+      // cwd will be set automatically by PM2 to the directory where config file is located
       env_file: ".env",
       env: {
         NODE_ENV: "production",
