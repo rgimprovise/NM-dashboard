@@ -13,14 +13,14 @@ const distPath = path.join(__dirname, "../spa");
 app.use(express.static(distPath));
 
 // Handle React Router - serve index.html for all non-API routes
-// Use app.use with wildcard instead of app.get("/*") which doesn't work with path-to-regexp
-app.use((req, res, next) => {
+// Use app.all with * pattern (not /*) for catch-all route
+app.all("*", (req, res, next) => {
   // Don't serve index.html for API routes
   if (req.path.startsWith("/api/") || req.path.startsWith("/health")) {
     return next();
   }
   
-  // If it's not a static file request, serve index.html for SPA routing
+  // Serve index.html for SPA routing (React Router)
   res.sendFile(path.join(distPath, "index.html"), (err) => {
     if (err) {
       next(err);
