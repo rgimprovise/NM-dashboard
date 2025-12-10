@@ -94,24 +94,24 @@ export class ExcelParser {
           const requiresName = fileType === "products" || fileType === "categories";
           
           if (requiresName) {
-            if (reverseMapping["name"] !== undefined) {
-              const name = row[reverseMapping["name"]]?.toString().trim();
-              if (!name) {
-                errors.push({
-                  row: actualRowIndex,
-                  field: "name",
-                  error: "Name is required",
-                });
-                return;
-              }
-              product.name = name;
-            } else {
+          if (reverseMapping["name"] !== undefined) {
+            const name = row[reverseMapping["name"]]?.toString().trim();
+            if (!name) {
               errors.push({
                 row: actualRowIndex,
                 field: "name",
-                error: "Name column not mapped",
+                error: "Name is required",
               });
               return;
+            }
+            product.name = name;
+          } else {
+            errors.push({
+              row: actualRowIndex,
+              field: "name",
+              error: "Name column not mapped",
+            });
+            return;
             }
           } else {
             // Для других типов файлов name опциональное или берется из другого поля

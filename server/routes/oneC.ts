@@ -238,7 +238,7 @@ export const uploadProducts: RequestHandler = async (req, res) => {
     try {
       switch (fileType) {
         case "products": {
-          const products = await loadOneCProducts(true);
+    const products = await loadOneCProducts(true);
           totalRows = products.length;
           withErrors = products.filter(p => !p.name || !p.article).length;
           processed = totalRows - withErrors;

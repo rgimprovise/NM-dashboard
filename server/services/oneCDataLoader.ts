@@ -186,7 +186,7 @@ function mapSalesMarginHeaders(headers: string[]): Record<string, number> {
     // documentNumber: ищем "номер документа" или просто "номер" (если нет других полей с "номер")
     if (normalized.includes("номер")) {
       if (normalized.includes("документ") || !mapping.documentNumber) {
-        mapping.documentNumber = index;
+      mapping.documentNumber = index;
       }
     }
     // date: ищем "дата"
@@ -226,7 +226,7 @@ function mapReturnsHeaders(headers: string[]): Record<string, number> {
     // documentNumber: ищем "номер документа" или просто "номер" (если нет других полей с "номер")
     if (normalized.includes("номер")) {
       if (normalized.includes("документ") || !mapping.documentNumber) {
-        mapping.documentNumber = index;
+      mapping.documentNumber = index;
       }
     }
     // date: ищем "дата"

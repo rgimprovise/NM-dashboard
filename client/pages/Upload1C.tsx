@@ -675,27 +675,27 @@ export default function Upload1C() {
                           <label className="text-xs text-muted-foreground block mb-1">
                             {field.label}
                             {field.required && <span className="text-red-500 ml-1">*</span>}
-                          </label>
-                          <div className="flex gap-2">
-                            <Input
-                              value={value}
-                              onChange={(e) =>
-                                setColumnMapping({
-                                  ...columnMapping,
+                        </label>
+                        <div className="flex gap-2">
+                          <Input
+                            value={value}
+                            onChange={(e) =>
+                              setColumnMapping({
+                                ...columnMapping,
                                   [field.key]: e.target.value,
-                                })
-                              }
+                              })
+                            }
                               placeholder={`Название колонки`}
                               list={`columns-${field.key}`}
                               className={field.required && !value ? "border-red-300" : ""}
-                            />
+                          />
                             <datalist id={`columns-${field.key}`}>
-                              {availableColumns.map((col) => (
-                                <option key={col} value={col} />
-                              ))}
-                            </datalist>
-                          </div>
+                            {availableColumns.map((col) => (
+                              <option key={col} value={col} />
+                            ))}
+                          </datalist>
                         </div>
+                      </div>
                       );
                     })}
                   </div>
