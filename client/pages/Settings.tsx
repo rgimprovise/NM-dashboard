@@ -347,7 +347,7 @@ export default function Settings() {
                   {tokenStatus?.yandex?.error && (
                     <div className="bg-red-50 border border-red-200 p-3 rounded text-sm text-red-800">
                       <AlertCircle className="w-4 h-4 inline mr-2" />
-                      Ошибка: {tokenStatus.yandex.error}
+                      Ошибка: {tokenStatus.yandex?.error}
                     </div>
                   )}
 
@@ -375,7 +375,7 @@ export default function Settings() {
                         Последняя проверка
                       </label>
                       <span className="text-foreground">
-                        {tokenStatus?.yandex?.lastCheck ? formatDate(tokenStatus.yandex.lastCheck) : "Никогда"}
+                        {tokenStatus?.yandex?.lastCheck ? formatDate(tokenStatus.yandex?.lastCheck) : "Никогда"}
                       </span>
                     </div>
                   </div>
@@ -415,7 +415,7 @@ export default function Settings() {
                     <div className="bg-yellow-50 border border-yellow-200 p-3 rounded flex gap-3">
                       <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0" />
                       <p className="text-sm text-yellow-800">
-                        Ваш VK токен доступа истекает через {Math.round(tokenStatus.vk.hoursUntilExpiry)} часов. Пожалуйста, обновите его
+                        Ваш VK токен доступа истекает через {Math.round(tokenStatus.vk?.hoursUntilExpiry || 0)} часов. Пожалуйста, обновите его
                         для поддержания непрерывной синхронизации данных.
                       </p>
                     </div>
@@ -489,7 +489,7 @@ export default function Settings() {
                         Истекает
                       </label>
                       <span className={tokenStatus?.vk?.hoursUntilExpiry && tokenStatus.vk.hoursUntilExpiry < 24 ? "text-yellow-600 font-medium" : "text-foreground"}>
-                        {tokenStatus?.vk?.expiresAt ? formatDate(tokenStatus.vk.expiresAt) : "Неизвестно"}
+                        {tokenStatus?.vk?.expiresAt ? formatDate(tokenStatus.vk?.expiresAt) : "Неизвестно"}
                       </span>
                     </div>
                   </div>
