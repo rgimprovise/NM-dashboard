@@ -130,6 +130,17 @@ export function createServer() {
   app.use(cors());
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
+  
+  // Logging middleware for API routes (for debugging)
+  app.use((req, res, next) => {
+    if (req.path.startsWith("/api/")) {
+      console.log(`📥 ${req.method} ${req.path} - Headers:`, {
+        'content-type': req.headers['content-type'],
+        'origin': req.headers['origin'],
+      });
+    }
+    next();
+  });
 
   // Example API routes
   app.get("/api/ping", (_req, res) => {
