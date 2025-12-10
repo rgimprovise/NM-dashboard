@@ -185,12 +185,16 @@ export function createServer() {
   app.post("/api/mapping/auto", mappingRoutes.autoMapProducts);
 
   // 404 handler for API routes (must be before SPA middleware)
-  app.use("/api/*", (req, res) => {
-    if (!res.headersSent) {
+  // Note: Cannot use /api/* pattern in Express 5, so we use a middleware that checks the path
+  app.use((req, res, next) => {
+    // Only handle API routes that haven't been matched
+    if (req.path.startsWith("/api/") && !res.headersSent) {
       res.status(404).json({
         success: false,
         error: `API endpoint not found: ${req.method} ${req.path}`,
       });
+    } else {
+      next();
     }
   });
 
