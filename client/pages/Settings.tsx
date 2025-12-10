@@ -81,6 +81,7 @@ export default function Settings() {
     if (activeTab === "tokens") {
       loadTokenStatus();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
   // Load sync status when sync tab is active
@@ -88,6 +89,7 @@ export default function Settings() {
     if (activeTab === "sync") {
       loadSyncStatus();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
   // Load sync history when history tab is active
@@ -95,18 +97,39 @@ export default function Settings() {
     if (activeTab === "history") {
       loadSyncHistory();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
   const loadTokenStatus = async () => {
     try {
       setLoading(true);
       const response = await fetch("/api/settings/token-status");
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
       const result = await response.json();
       if (result.success && result.data) {
         setTokenStatus(result.data);
       }
     } catch (error) {
       console.error("Error loading token status:", error);
+      // Set default empty state on error
+      setTokenStatus({
+        yandex: {
+          token: null,
+          campaignIds: [],
+          accountId: null,
+          connected: false,
+          lastCheck: new Date().toISOString(),
+        },
+        vk: {
+          accountId: null,
+          connected: false,
+          expiresAt: null,
+          hoursUntilExpiry: null,
+          lastCheck: new Date().toISOString(),
+        },
+      });
     } finally {
       setLoading(false);
     }
@@ -116,12 +139,16 @@ export default function Settings() {
     try {
       setLoading(true);
       const response = await fetch("/api/settings/sync-status");
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
       const result = await response.json();
       if (result.success && result.data) {
         setSyncStatus(result.data);
       }
     } catch (error) {
       console.error("Error loading sync status:", error);
+      setSyncStatus([]); // Set empty array on error
     } finally {
       setLoading(false);
     }
@@ -131,12 +158,16 @@ export default function Settings() {
     try {
       setLoading(true);
       const response = await fetch("/api/settings/sync-history");
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
       const result = await response.json();
       if (result.success && result.data) {
         setSyncHistory(result.data);
       }
     } catch (error) {
       console.error("Error loading sync history:", error);
+      setSyncHistory([]); // Set empty array on error
     } finally {
       setLoading(false);
     }
